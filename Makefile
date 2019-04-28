@@ -28,12 +28,12 @@ cbuild:
 
 # Run hspec tests
 .PHONY: test
-test: gen
+test:
 	@rm -f bali.tix
 	stack test --allow-different-user $(COMPILE_FLAGS)
 
 .PHONY: ctest
-ctest: gen
+ctest:
 	@rm -f bali.tix
 	stack test --allow-different-user --file-watch $(COMPILE_FLAGS)
 
