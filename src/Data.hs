@@ -10,6 +10,8 @@
 -- https://stackoverflow.com/questions/43782187/why-does-go-have-a-bit-clear-and-not-operator
 module Data where
 
+import Data.Word (Word16)
+
 type VarIndex = Int
 
 type LabelName = String
@@ -35,6 +37,12 @@ data Field = Field
   , fname      :: String
   , descriptor :: JType
   -- , value :: LDCType TODO?
+  } deriving (Show, Eq)
+
+data ClassFile = ClassFile
+  { minorVersion :: Word16
+  , majorVersion :: Word16
+  , poolCount :: Word16
   } deriving (Show, Eq)
 
 data Class = Class
@@ -92,9 +100,9 @@ data JType
   | JLong -- J
   | JShort -- S
   | JBool -- Z
---  | JVoid -- V
   deriving (Eq)
 
+--  | JVoid -- V
 instance Show JType where
   show (JClass (ClassRef cn)) = "L" ++ cn ++ ";"
   show (JArray jt)            = "[" ++ show jt
@@ -102,8 +110,8 @@ instance Show JType where
   show JInt                   = "I"
   show JDouble                = "D"
   show JBool                  = "Z"
---  show JVoid                  = "V"
 
+--  show JVoid                  = "V"
 data IRItem
   = IRInst Instruction
   | IRLabel LabelName

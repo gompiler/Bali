@@ -1,7 +1,7 @@
 name:                Bali
 version:             0.1.0.0
 github:              "Gompilers/Bali"
-license:             GPLv3
+license:             GPL-3
 author:              "Gompiler Team"
 maintainer:          "me@allanwang.ca"
 copyright:           "2018 Gompiler Team"
@@ -29,6 +29,7 @@ dependencies:
 - bytestring
 - filepath
 - file-embed
+- binary
 
 library:
   source-dirs: src
