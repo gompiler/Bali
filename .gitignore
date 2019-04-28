@@ -1,0 +1,17 @@
+.stack-work/
+Bali.cabal
+*~
+
+# IntelliJ
+*.iml
+# User-specific stuff
+.idea/
+!.idea/codeStyles/*
+
+*.bak
+
+# Mac
+**/.DS_Store
+
+out/
+.vscode/
