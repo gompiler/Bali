@@ -1,6 +1,6 @@
 -- | Data mapping for Java IR
 -- Sources:
--- http://jasmin.sourceforge.net/instructions.html
+-- https://docs.oracle.com/javase/specs/jvms/se8/html/
 -- https://en.wikibooks.org/wiki/Java_Programming/Byte_Code
 -- https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html
 -- https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings
@@ -80,14 +80,19 @@ instance Show MethodRef where
     "Method [" ++
     show jt ++ " " ++ mn ++ " (" ++ concatMap show tl ++ ")" ++ show t
 
+-- | See https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3
 data JType
   = JClass ClassRef -- Lwhatever;
   | JArray JType -- [ as a prefix, ex. [I
+  | JByte -- B
   | JChar -- C
-  | JInt -- I
   | JDouble -- D
+  | JFloat -- F
+  | JInt -- I
+  | JLong -- J
+  | JShort -- S
   | JBool -- Z
-  | JVoid -- V
+--  | JVoid -- V
   deriving (Eq)
 
 instance Show JType where
@@ -97,7 +102,7 @@ instance Show JType where
   show JInt                   = "I"
   show JDouble                = "D"
   show JBool                  = "Z"
-  show JVoid                  = "V"
+--  show JVoid                  = "V"
 
 data IRItem
   = IRInst Instruction
