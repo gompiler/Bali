@@ -1,0 +1,20 @@
+language: generic
+cache:
+  directories:
+    - $HOME/.stack
+services:
+  - docker
+before_cache:
+  - mkdir $HOME/.stack
+before_install:
+  - docker build -t gompiler .
+  - docker volume create -o device=$HOME/.stack -o o=bind stack
+script:
+  - cd $TRAVIS_BUILD_DIR
+  - docker run -v stack:/root/.stack gompiler
+notifications:
+  email: false
+  slack:
+    template:
+      - "Bali <%{build_url}|#%{build_number}> by %{author} %{result} in %{duration}"
+      - "%{repository_slug}@%{branch} (<%{compare_url}|%{commit}>)"
