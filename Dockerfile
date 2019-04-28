@@ -5,6 +5,8 @@ RUN set -ex \
         && apt-get install -y make curl\
         && curl -sSL https://get.haskellstack.org/ | sh
 
+ENV PATH ${PATH}:/root/.local/bin
+
 RUN mkdir -p /repo/
 WORKDIR /repo/
 COPY . /repo/
