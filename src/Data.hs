@@ -13,6 +13,8 @@ module Data where
 import           Base
 import           Data.Word (Word16, Word32)
 
+type TODO = ()
+
 type VarIndex = Int
 
 type LabelName = String
@@ -21,12 +23,14 @@ data FieldAccess
   = FPublic
   | FPrivate
   | FProtected
+  | FPackagePrivate
   deriving (Eq)
 
 instance Show FieldAccess where
-  show FPublic    = "public"
-  show FPrivate   = "private"
-  show FProtected = "protected"
+  show FPublic         = "public"
+  show FPrivate        = "private"
+  show FProtected      = "protected"
+  show FPackagePrivate = ""
 
 newtype MethodSpec =
   MethodSpec ([JType], JType)
@@ -44,6 +48,12 @@ data ClassFile = ClassFile
   { minorVersion :: Word16
   , majorVersion :: Word16
   , constantPool :: ConstantPool
+  , accessFlags  :: AccessFlag
+  , thisClass    :: Word16
+  , superClass   :: Word16
+  , interfaces   :: Interfaces
+  , fields       :: Fields
+  , methods      :: Methods
   } deriving (Show, Eq)
 
 newtype ConstantPool =
@@ -118,12 +128,52 @@ data CpMethodHandle
   | CpmInvokeInterface
   deriving (Show, Eq)
 
-data Class = Class
-  { cname   :: String
-  , bstruct :: Bool
-  , fields  :: [Field]
-  , methods :: [Method]
+-- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.2
+newtype AccessFlag =
+  AccessFlag Word16
+  deriving (Show, Eq)
+
+--data Class = Class
+--  { cname   :: String
+--  , bstruct :: Bool
+--  , fields  :: [Field]
+--  , methods :: [Method]
+--  } deriving (Show, Eq)
+
+newtype Interfaces =
+  Interfaces [Word16]
+  deriving (Show, Eq)
+
+newtype Fields =
+  Fields [FieldInfo]
+  deriving (Show, Eq)
+
+data FieldInfo = FieldInfo
+  { fAccessFlags :: AccessFlag
+  , fNameIndex   :: Word16
+  , fDescIndex   :: Word16
+  , fAttrs       :: Attributes
   } deriving (Show, Eq)
+
+newtype Methods =
+  Methods [MethodInfo]
+  deriving (Show, Eq)
+
+data MethodInfo = MethodInfo
+  { mAccessFlags :: AccessFlag
+  , mNameIndex   :: Word16
+  , mDescIndex   :: Word16
+  , mAttrs       :: Attributes
+  } deriving (Show, Eq)
+
+newtype Attributes =
+  Attributes [AttributeInfo]
+  deriving (Show, Eq)
+
+data AttributeInfo =
+  AttributeInfo Word16
+                TODO -- todo figure out what info is
+  deriving (Show, Eq)
 
 data Method = Method
   { mname       :: String

@@ -39,11 +39,20 @@ class DParse a where
 
 instance DParse ClassFile where
   dparse' =
-    ClassFile <$ magic <*> u2 "minor version" <*> u2 "major version" <*> dparse'
+    ClassFile <$ magic <*> u2 "minor version" <*> u2 "major version" <*> dparse' <*>
+    dparse' <*>
+    u2 "this class" <*>
+    u2 "super class" <*>
+    dparse' <*>
+    dparse' <*>
+    dparse'
     where
       magic :: Parser ByteString
       magic = chunk (encode (0xcafebabe :: Word32)) <?> "magic"
 
+-- | Parses the constant pool
+-- The first entry is u2 denoting the pool count
+-- Based on the count, we then parse the appropriate number of pool info
 instance DParse ConstantPool where
   dparse' = do
     count <- u2 "constant pool count"
@@ -86,16 +95,45 @@ instance DParse ConstantPoolInfo where
               7 -> CpmInvokeSpecial
               8 -> CpmNewInvokeSpecial
               9 -> CpmInvokeInterface
+              _ -> error "Invalid reference kind" -- TODO throw parsec error
       info 16 = CpIndex <$> descIndex <*-> CpMethodType
       info 18 =
         CpIndex <$> u2 "bootstrap method attr index" <*>
         (CpInvokeDynamic <$> ntIndex)
       info _ = error "Invalid tag" -- TODO throw parsec error
-      nameIndex = u2 "name index"
-      descIndex = u2 "descriptor index"
       classIndex = u2 "class index"
       ntIndex = u2 "name and type index"
       bIndex = u2 "bytes"
+
+instance DParse Interfaces where
+  dparse' = do
+    count <- u2 "interfaces count"
+    info <- replicateM count (u2 "interfaces")
+    return $ Interfaces info
+
+instance DParse Fields where
+  dparse' = do
+    count <- u2 "fields count"
+    info <- replicateM count dparse'
+    return $ Fields info
+
+instance DParse FieldInfo where
+  dparse' = FieldInfo <$> dparse' <*> nameIndex <*> descIndex <*> dparse'
+
+instance DParse Methods where
+  dparse' = do
+    count <- u2 "methods count"
+    info <- replicateM count dparse'
+    return $ Methods info
+
+instance DParse MethodInfo where
+  dparse' = MethodInfo <$> dparse' <*> nameIndex <*> descIndex <*> dparse'
+
+instance DParse AccessFlag where
+  dparse' = AccessFlag <$> u2 "access flags"
+
+instance DParse Attributes where
+  dparse' = undefined
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
@@ -112,6 +150,12 @@ u1 err = fromIntegral <$> anySingle <?> err
 
 u2 :: Num a => String -> Parser a
 u2 err = fromIntegral . G.runGet G.getWord16be <$> takeP (Just err) 2
+
+nameIndex :: Parser Word16
+nameIndex = u2 "name index"
+
+descIndex :: Parser Word16
+descIndex = u2 "descriptor index"
 
 -- | 'semi' parses a semicolon.
 semi :: Parser ByteString
