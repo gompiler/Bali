@@ -51,8 +51,7 @@ instance DParse ClassFile where
     dparse' <*>
     dparse' <*>
     dparse' <*>
-    dparse' <*>
-    takeRest
+    dparse'
     where
       magic :: Parser ByteString
       magic = chunk (encode (0xcafebabe :: Word32)) <?> "magic"

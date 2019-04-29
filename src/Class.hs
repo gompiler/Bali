@@ -38,7 +38,6 @@ data ClassFile = ClassFile
   , fields       :: Fields
   , methods      :: Methods
   , attrs        :: Attributes
-  , rem          :: ByteString
   } deriving (Show, Eq)
 
 newtype ConstantPool =
@@ -52,8 +51,10 @@ cpInfo :: ConstantPool -> Index -> ByteString
     _ -> error $ "ConstantPool did not return info at index " ++ show i
 
 instance Show ConstantPool where
-  show (ConstantPool i) = "ConstantPool\n" ++ concatMap showInfo (zip [1 ..] i)
+  show (ConstantPool inf) =
+    "ConstantPool\n" ++ concatMap showInfo (zip [1 ..] inf)
     where
+      showInfo :: (Integer, ConstantPoolInfo) -> String
       showInfo (i, info) = "\t" ++ show i ++ ": " ++ show info ++ "\n"
 
 -- | Constant pool info
