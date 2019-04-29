@@ -22,12 +22,6 @@ data FieldAccess
   | FPackagePrivate
   deriving (Eq)
 
-instance Show FieldAccess where
-  show FPublic         = "public"
-  show FPrivate        = "private"
-  show FProtected      = "protected"
-  show FPackagePrivate = ""
-
 class FieldAccessInfo a where
   fieldAccess :: a -> FieldAccess
   isStatic :: a -> Bool

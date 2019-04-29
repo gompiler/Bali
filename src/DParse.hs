@@ -1,8 +1,3 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE RankNTypes          #-}
-
---{-# LANGUAGE ScopedTypeVariables #-}
 {-
 Disassembler Parser, which converts from .class to .j
 
@@ -13,7 +8,6 @@ References:
 -}
 module DParse
   ( dparse
-  , dparse'
   , Parser
   , module Class
   ) where

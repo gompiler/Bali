@@ -13,7 +13,6 @@ module Base
 
 import           Data.ByteString.Lazy (ByteString)
 import           Data.Functor         (($>), (<&>))
-import qualified Data.Maybe           as Maybe
 import           Data.Word            (Word16, Word32, Word8)
 
 infixl 4 <$->, <*->, <$$>
