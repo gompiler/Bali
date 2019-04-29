@@ -1,4 +1,7 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 {-
 Disassembler Parser, which converts from .class to .j
@@ -16,15 +19,16 @@ module DParse
   ) where
 
 import           Base
+import           Class
 import           Control.Monad              (replicateM)
 import           Control.Monad.Except       (throwError)
-import           Class
 import           Data.Binary                (encode)
 import qualified Data.Binary.Get            as G
 import           Data.ByteString.Internal   (c2w, w2c)
 import           Data.ByteString.Lazy       (pack, unpack)
 import           Data.Void
 import           GHC.Base                   (unsafeChr)
+import           Instructions
 import           Text.Megaparsec
 import           Text.Megaparsec.Byte
 import qualified Text.Megaparsec.Byte.Lexer as L
@@ -36,8 +40,31 @@ sc = L.space space1 empty empty
 
 class DParse a where
   dparse :: Parser a
-  dparse = between sc eof dparse'
+  dparse = dparse' <* eof
   dparse' :: Parser a
+
+dparseM ::
+     forall a. DParse a
+  => Parser Int
+  -> Parser [a]
+dparseM counter = do
+  count <- counter
+  replicateM count (dparse' :: Parser a)
+
+dparse2M ::
+     forall a. DParse a
+  => String
+  -> Parser [a]
+dparse2M tag = dparseM $ u2 $ tag ++ " count"
+
+dparse4M ::
+     forall a. DParse a
+  => String
+  -> Parser [a]
+dparse4M tag = dparseM $ u4 $ tag ++ " count"
+
+emptyConstantPool :: ConstantPool
+emptyConstantPool = ConstantPool []
 
 instance DParse ClassFile where
   dparse' =
@@ -48,7 +75,8 @@ instance DParse ClassFile where
     dparse' <*>
     dparse' <*>
     dparse' <*>
-    dparse'
+    dparse' <*>
+    takeRest
     where
       magic :: Parser ByteString
       magic = chunk (encode (0xcafebabe :: Word32)) <?> "magic"
@@ -67,27 +95,26 @@ instance DParse ConstantPoolInfo where
   dparse' = info =<< u1 "constant pool info"
     where
       info :: Int -> Parser ConstantPoolInfo
-      info 7 = CpIndex <$> nameIndex <*-> CpClass
-      info 9 = CpIndex <$> classIndex <*> (CpField <$> ntIndex)
-      info 10 = CpIndex <$> classIndex <*> (CpMethod <$> ntIndex)
-      info 11 = CpIndex <$> classIndex <*> (CpInterfaceMethod <$> ntIndex)
-      info 8 = CpIndex <$> classIndex <*-> CpString
-      info 3 = CpConst <$> (CpInteger <$> bIndex)
-      info 4 = CpConst <$> (CpFloat <$> bIndex)
-      info 5 = CpConst <$> (CpLong <$> bIndex <*> bIndex)
-      info 6 = CpConst <$> (CpDouble <$> bIndex <*> bIndex)
-      info 12 = CpIndex <$> nameIndex <*> (CpNameAndType <$> descIndex)
-      info 1 =
-        CpConst <$> do
-          l <- u2 "length"
-          b <- takeP (Just "string info") l
-          return $ CpInfo (fromIntegral l) b
-      info 15 = methodHandle <$> u1 "reference kind" <*> u2 "reference index"
+      info 7 = CpClass <$> nameIndex
+      info 9 = CpFieldRef <$> classIndex <*> ntIndex
+      info 10 = CpMethodRef <$> classIndex <*> ntIndex
+      info 11 = CpInterfaceMethodRef <$> classIndex <*> ntIndex
+      info 8 = CpString <$> classIndex
+      info 3 = CpInteger <$> bIndex
+      info 4 = CpFloat <$> bIndex
+      info 5 = CpLong <$> bIndex <*> bIndex
+      info 6 = CpDouble <$> bIndex <*> bIndex
+      info 12 = CpNameAndType <$> nameIndex <*> descIndex
+      info 1 = do
+        l <- u2 "length"
+        b <- takeP (Just "string info") l
+        return $ CpInfo b
+      info 15 =
+        CpMethodHandle <$> (refKind <$> u1 "reference kind") <*>
+        u2 "reference index"
           -- Note that the reference kind should actually be parsed first
         where
-          methodHandle kind index =
-            CpIndex index $
-            CpMethodHandle $
+          refKind kind =
             case kind of
               1 -> CpmGetField
               2 -> CpmGetStatic
@@ -99,10 +126,8 @@ instance DParse ConstantPoolInfo where
               8 -> CpmNewInvokeSpecial
               9 -> CpmInvokeInterface
               _ -> error "Invalid reference kind" -- TODO throw parsec error
-      info 16 = CpIndex <$> descIndex <*-> CpMethodType
-      info 18 =
-        CpIndex <$> u2 "bootstrap method attr index" <*>
-        (CpInvokeDynamic <$> ntIndex)
+      info 16 = CpMethodType <$> descIndex
+      info 18 = CpInvokeDynamic <$> u2 "bootstrap method attr index" <*> ntIndex
       info _ = error "Invalid tag" -- TODO throw parsec error
       classIndex = u2 "class index"
       ntIndex = u2 "name and type index"
@@ -124,10 +149,7 @@ instance DParse FieldInfo where
   dparse' = FieldInfo <$> dparse' <*> nameIndex <*> descIndex <*> dparse'
 
 instance DParse Methods where
-  dparse' = do
-    count <- u2 "methods count"
-    info <- replicateM count dparse'
-    return $ Methods info
+  dparse' = Methods <$> dparse2M "methods"
 
 instance DParse MethodInfo where
   dparse' = MethodInfo <$> dparse' <*> nameIndex <*> descIndex <*> dparse'
@@ -136,17 +158,29 @@ instance DParse AccessFlag where
   dparse' = AccessFlag <$> u2 "access flags"
 
 instance DParse Attributes where
-  dparse' = do
-    count <- u2 "attributes count"
-    info <- replicateM count dparse'
-    return $ Attributes info
+  dparse' = Attributes <$> dparse2M "attributes"
 
 instance DParse AttributeInfo where
   dparse' = do
-    index <- u2 "attribute name index"
-    count <- u4 "attribute info count"
-    info <- replicateM count (u1 "attribute info")
-    return $ AttributeInfo index info
+    name <- u2 "attribute name index"
+    count <- u4 "attribute length"
+    b <- takeP (Just "attribute info") count
+    return $ AttributeInfo name b
+
+codeAttribute cp = do
+  stackLimit <- u2 "max stack"
+  localLimit <- u2 "max locals"
+  code <- dparse'
+  exceptionTables <- dparse'
+  attrs <- dparse'
+  return $
+    ACode
+      { stackLimit = stackLimit
+      , localLimit = localLimit
+      , code = code
+      , exceptionTables = exceptionTables
+      , cAttrs = attrs
+      }
 
 instance DParse FieldDescriptor where
   dparse' = do
@@ -168,15 +202,17 @@ instance DParse FieldDescriptor where
       semicolon :: Word8
       semicolon = c2w ';'
 
-lexeme :: Parser a -> Parser a
-lexeme = L.lexeme sc
+instance DParse Instructions where
+  dparse' = Instructions <$> dparse4M "code"
 
-symbol :: ByteString -> Parser ByteString
-symbol = L.symbol sc
+instance DParse Instruction where
+  dparse' = undefined
 
--- | 'integer' parses an integer.
-integer :: Parser Integer
-integer = lexeme L.decimal
+instance DParse ExceptionTables where
+  dparse' = ExceptionTables <$> dparse2M "exception table"
+
+instance DParse ExceptionTable where
+  dparse' = undefined
 
 u1 :: Num a => String -> Parser a
 u1 err = fromIntegral <$> anySingle <?> err
@@ -192,7 +228,3 @@ nameIndex = u2 "name index"
 
 descIndex :: Parser Word16
 descIndex = u2 "descriptor index"
-
--- | 'semi' parses a semicolon.
-semi :: Parser ByteString
-semi = symbol ";"

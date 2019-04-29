@@ -16,6 +16,7 @@ data NumericType
 data IntegralType
   = TiInt
   | TiLong
+  deriving (Show, Eq)
 
 data BitOp
   = Or
@@ -23,6 +24,7 @@ data BitOp
   | Shr
   | Ushr
   | Xor
+  deriving (Show, Eq)
 
 data NumOp
   = Add
@@ -31,6 +33,7 @@ data NumOp
   | Div
   | Neg
   | Rem
+  deriving (Show, Eq)
 
 data PrimitiveType
   = TpByte
@@ -40,6 +43,7 @@ data PrimitiveType
   | TpLong
   | TpFloat
   | TpDouble
+  deriving (Show, Eq)
 
 data IRCmp
   = G_
@@ -48,17 +52,23 @@ data IRCmp
   | NEQ_
   | L_
   | LT_
+  deriving (Show, Eq)
 
 data Ldc
   = Ldc Word8
   | LdcW Word16
   | Ldc2W Word16
+  deriving (Show, Eq)
 
-type Index = Word8
+type IRIndex = Word8
 
-type Indexw = Word16
+type IRIndexw = Word16
 
 type Label = Word16
+
+newtype Instructions =
+  Instructions [Instruction]
+  deriving (Show, Eq)
 
 data Instruction
   -- arrayref, index -> value
@@ -71,16 +81,18 @@ data Instruction
   | AconstNull
   -- -> ref
   -- Note that this encompasses xload_0 .. _3
-  | Aload Index
-  | Pload NumericType Index
+  | Aload IRIndex
+  | Pload NumericType
+          IRIndex
   -- ref -> [empty]
   | Areturn
   | Numreturn NumericType
   | Return
   -- ref ->
   -- Note that this encompasses xstore_0 .. _3
-  | Astore Index
-  | Pstore NumericType Index
+  | Astore IRIndex
+  | Pstore NumericType
+           IRIndex
   -- ref -> [empty] ref
   | AThrow
   -- -> value
@@ -124,26 +136,27 @@ data Instruction
   | Goto Label
   | Gotow Word32
   -- -> ref
-  | New Indexw
+  | New IRIndexw
   -- count -> ref
-  | Anewarray Indexw
+  | Anewarray IRIndexw
   | Newarray PrimitiveType
   -- count1, [count2, ...] -> arrayref
-  | Multianewarray Indexw
+  | Multianewarray IRIndexw
                    Word8
-  | Getfield Index
-  | Getstatic Index
-  | Putfield Index
-  | Putstatic Index
+  | Getfield IRIndex
+  | Getstatic IRIndex
+  | Putfield IRIndex
+  | Putstatic IRIndex
   | Wide Instruction
   | BitOp BitOp
           IntegralType
-  | Instanceof Indexw
-  | Invokedynamic Indexw
-  | Invokeinterface Indexw
-  | Invokespecial Indexw
-  | Invokestatic Indexw
-  | Invokevirtual Indexw
+  | Instanceof IRIndexw
+  | Invokedynamic IRIndexw
+  | Invokeinterface IRIndexw
+  | Invokespecial IRIndexw
+  | Invokestatic IRIndexw
+  | Invokevirtual IRIndexw
   | Nop
   | Pop
   | Pop2
+  deriving (Show, Eq)
