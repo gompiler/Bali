@@ -45,6 +45,7 @@ instance DParse ClassFile where
     u2 "super class" <*>
     dparse' <*>
     dparse' <*>
+    dparse' <*>
     dparse'
     where
       magic :: Parser ByteString
@@ -133,7 +134,17 @@ instance DParse AccessFlag where
   dparse' = AccessFlag <$> u2 "access flags"
 
 instance DParse Attributes where
-  dparse' = undefined
+  dparse' = do
+    count <- u2 "attributes count"
+    info <- replicateM count dparse'
+    return $ Attributes info
+
+instance DParse AttributeInfo where
+  dparse' = do
+    index <- u2 "attribute name index"
+    count <- u4 "attribute info count"
+    info <- replicateM count (u1 "attribute info")
+    return $ AttributeInfo index info
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
@@ -150,6 +161,9 @@ u1 err = fromIntegral <$> anySingle <?> err
 
 u2 :: Num a => String -> Parser a
 u2 err = fromIntegral . G.runGet G.getWord16be <$> takeP (Just err) 2
+
+u4 :: Num a => String -> Parser a
+u4 err = fromIntegral . G.runGet G.getWord32be <$> takeP (Just err) 4
 
 nameIndex :: Parser Word16
 nameIndex = u2 "name index"
