@@ -30,6 +30,7 @@ dependencies:
 - filepath
 - file-embed
 - binary
+- mtl
 
 library:
   source-dirs: src

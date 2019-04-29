@@ -5,11 +5,12 @@ module Base
   , (<*->)
   , (<$->)
   , mapS
+  , ByteString
   ) where
 
-import           Data.Functor (($>), (<&>))
-
-import qualified Data.Maybe   as Maybe
+import           Data.ByteString.Lazy (ByteString)
+import           Data.Functor         (($>), (<&>))
+import qualified Data.Maybe           as Maybe
 
 infixl 4 <$->, <*->, <$$>
 
