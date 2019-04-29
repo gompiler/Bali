@@ -1,17 +1,10 @@
--- | Data mapping for Java IR
--- Sources:
--- https://docs.oracle.com/javase/specs/jvms/se8/html/
--- https://en.wikibooks.org/wiki/Java_Programming/Byte_Code
--- https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html
--- https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings
--- https://www.guardsquare.com/en/blog/string-concatenation-java-9-untangling-invokedynamic
--- http://www.cs.sjsu.edu/~pearce/modules/lectures/co/jvm/jasmin/demos/demos.html
--- http://homepages.inf.ed.ac.uk/kwxm/JVM/fcmpg.html
--- https://stackoverflow.com/questions/43782187/why-does-go-have-a-bit-clear-and-not-operator
-module Data where
+{-
+Data mapping for Java class data
+See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html
+-}
+module Class where
 
 import           Base
-import           Data.Word (Word16, Word32, Word8)
 
 type TODO = ()
 
@@ -31,6 +24,11 @@ instance Show FieldAccess where
   show FPrivate        = "private"
   show FProtected      = "protected"
   show FPackagePrivate = ""
+
+class FieldAccessInfo a where
+  fieldAccess :: a -> FieldAccess
+  isStatic :: a -> Bool
+  isFinal :: a -> Bool
 
 data ClassFile = ClassFile
   { minorVersion :: Word16

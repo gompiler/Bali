@@ -12,19 +12,18 @@ module DParse
   ( dparse
   , dparse'
   , Parser(..)
-  , module Data
+  , module Class
   ) where
 
 import           Base
 import           Control.Monad              (replicateM)
 import           Control.Monad.Except       (throwError)
-import           Data
+import           Class
 import           Data.Binary                (encode)
 import qualified Data.Binary.Get            as G
 import           Data.ByteString.Internal   (c2w, w2c)
 import           Data.ByteString.Lazy       (pack, unpack)
 import           Data.Void
-import           Data.Word                  (Word16, Word32, Word8)
 import           GHC.Base                   (unsafeChr)
 import           Text.Megaparsec
 import           Text.Megaparsec.Byte
