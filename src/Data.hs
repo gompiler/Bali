@@ -137,6 +137,25 @@ data FieldInfo = FieldInfo
   , fAttrs       :: Attributes
   } deriving (Show, Eq)
 
+-- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.3.2-200
+-- Aka type
+data FieldDescriptor
+  = TByte
+  | TChar
+  | TDouble
+  | TFloat
+  | TInt
+  | TLong
+  | TRef ByteString
+  | TShort
+  | TBool
+  | TArray FieldDescriptor
+  deriving (Show, Eq)
+
+-- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.3.3
+-- Aka signature
+data MethodDescriptor = MethodDescriptor [FieldDescriptor] (Maybe FieldDescriptor)
+
 newtype Methods =
   Methods [MethodInfo]
   deriving (Show, Eq)

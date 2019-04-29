@@ -21,8 +21,11 @@ import           Control.Monad.Except       (throwError)
 import           Data
 import           Data.Binary                (encode)
 import qualified Data.Binary.Get            as G
+import           Data.ByteString.Internal   (c2w, w2c)
+import           Data.ByteString.Lazy       (pack, unpack)
 import           Data.Void
 import           Data.Word                  (Word16, Word32, Word8)
+import           GHC.Base                   (unsafeChr)
 import           Text.Megaparsec
 import           Text.Megaparsec.Byte
 import qualified Text.Megaparsec.Byte.Lexer as L
@@ -145,6 +148,26 @@ instance DParse AttributeInfo where
     count <- u4 "attribute info count"
     info <- replicateM count (u1 "attribute info")
     return $ AttributeInfo index info
+
+instance DParse FieldDescriptor where
+  dparse' = do
+    tag <- anySingle
+    case w2c tag of
+      'B' -> pure TByte
+      'C' -> pure TChar
+      'D' -> pure TDouble
+      'F' -> pure TFloat
+      'I' -> pure TInt
+      'J' -> pure TLong
+      'L' ->
+        TRef <$> (pack <$> many (satisfy (semicolon /=))) <* single semicolon
+      'S' -> pure TShort
+      'Z' -> pure TBool
+      '[' -> TArray <$> dparse'
+      _ -> error "Invalid field type"
+    where
+      semicolon :: Word8
+      semicolon = c2w ';'
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
