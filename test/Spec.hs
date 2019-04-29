@@ -1,8 +1,4 @@
---{-# LANGUAGE AllowAmbiguousTypes #-}
-
-import           Data.Binary          (encode)
 import qualified Data.ByteString.Lazy as LB
-import           Data.Word            (Word32)
 import           DParse
 import           Text.Megaparsec
 

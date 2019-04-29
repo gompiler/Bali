@@ -30,8 +30,6 @@ dependencies:
 - filepath
 - file-embed
 - binary
-- mtl
-- containers
 
 library:
   source-dirs: src

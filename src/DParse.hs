@@ -1,8 +1,8 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
+--{-# LANGUAGE ScopedTypeVariables #-}
 {-
 Disassembler Parser, which converts from .class to .j
 
@@ -14,57 +14,39 @@ References:
 module DParse
   ( dparse
   , dparse'
-  , Parser(..)
+  , Parser
   , module Class
   ) where
 
 import           Base
 import           Class
-import           Control.Monad              (replicateM)
-import           Control.Monad.Except       (throwError)
-import           Data.Binary                (encode)
-import qualified Data.Binary.Get            as G
-import           Data.ByteString.Internal   (c2w, w2c)
-import           Data.ByteString.Lazy       (pack, unpack)
+import           Control.Monad            (replicateM)
+import           Data.Binary              (encode)
+import qualified Data.Binary.Get          as G
+import           Data.ByteString.Internal (c2w, w2c)
+import           Data.ByteString.Lazy     (pack)
 import           Data.Void
-import           GHC.Base                   (unsafeChr)
 import           Instructions
 import           Text.Megaparsec
-import           Text.Megaparsec.Byte
-import qualified Text.Megaparsec.Byte.Lexer as L
 
+--import           Text.Megaparsec.Byte
 type Parser = Parsec Void ByteString
-
-sc :: Parser ()
-sc = L.space space1 empty empty
 
 class DParse a where
   dparse :: Parser a
   dparse = dparse' <* eof
   dparse' :: Parser a
 
-dparseM ::
-     forall a. DParse a
-  => Parser Int
-  -> Parser [a]
-dparseM counter = do
-  count <- counter
-  replicateM count (dparse' :: Parser a)
+dparseM :: Parser Int -> Parser a -> Parser [a]
+dparseM counter parser = do
+  c <- counter
+  replicateM c parser
 
-dparse2M ::
-     forall a. DParse a
-  => String
-  -> Parser [a]
-dparse2M tag = dparseM $ u2 $ tag ++ " count"
+dparse2M :: DParse a => String -> Parser [a]
+dparse2M tag = dparseM (u2 $ tag ++ " count") dparse'
 
-dparse4M ::
-     forall a. DParse a
-  => String
-  -> Parser [a]
-dparse4M tag = dparseM $ u4 $ tag ++ " count"
-
-emptyConstantPool :: ConstantPool
-emptyConstantPool = ConstantPool []
+dparse4M :: DParse a => String -> Parser [a]
+dparse4M tag = dparseM (u4 $ tag ++ " count") dparse'
 
 instance DParse ClassFile where
   dparse' =
@@ -86,9 +68,9 @@ instance DParse ClassFile where
 -- Based on the count, we then parse the appropriate number of pool info
 instance DParse ConstantPool where
   dparse' = do
-    count <- u2 "constant pool count"
+    c <- u2 "constant pool count"
     -- Note that count is one greater than the number of pool info entries
-    info <- replicateM (count - 1) dparse'
+    info <- replicateM (c - 1) dparse'
     return $ ConstantPool info
 
 instance DParse ConstantPoolInfo where
@@ -114,6 +96,7 @@ instance DParse ConstantPoolInfo where
         u2 "reference index"
           -- Note that the reference kind should actually be parsed first
         where
+          refKind :: Integer -> CpMethodHandle
           refKind kind =
             case kind of
               1 -> CpmGetField
@@ -134,16 +117,10 @@ instance DParse ConstantPoolInfo where
       bIndex = u2 "bytes"
 
 instance DParse Interfaces where
-  dparse' = do
-    count <- u2 "interfaces count"
-    info <- replicateM count (u2 "interfaces")
-    return $ Interfaces info
+  dparse' = Interfaces <$> dparseM (u2 "interfaces count") (u2 "interfaces")
 
 instance DParse Fields where
-  dparse' = do
-    count <- u2 "fields count"
-    info <- replicateM count dparse'
-    return $ Fields info
+  dparse' = Fields <$> dparse2M "fields"
 
 instance DParse FieldInfo where
   dparse' = FieldInfo <$> dparse' <*> nameIndex <*> descIndex <*> dparse'
@@ -163,25 +140,24 @@ instance DParse Attributes where
 instance DParse AttributeInfo where
   dparse' = do
     name <- u2 "attribute name index"
-    count <- u4 "attribute length"
-    b <- takeP (Just "attribute info") count
+    c <- u4 "attribute length"
+    b <- takeP (Just "attribute info") c
     return $ AttributeInfo name b
 
-codeAttribute cp = do
-  stackLimit <- u2 "max stack"
-  localLimit <- u2 "max locals"
-  code <- dparse'
-  exceptionTables <- dparse'
-  attrs <- dparse'
-  return $
-    ACode
-      { stackLimit = stackLimit
-      , localLimit = localLimit
-      , code = code
-      , exceptionTables = exceptionTables
-      , cAttrs = attrs
-      }
-
+--codeAttribute cp = do
+--  stackLimit <- u2 "max stack"
+--  localLimit <- u2 "max locals"
+--  code <- dparse'
+--  exceptionTables <- dparse'
+--  attrs <- dparse'
+--  return $
+--    ACode
+--      { stackLimit = stackLimit
+--      , localLimit = localLimit
+--      , code = code
+--      , exceptionTables = exceptionTables
+--      , cAttrs = attrs
+--      }
 instance DParse FieldDescriptor where
   dparse' = do
     tag <- anySingle
