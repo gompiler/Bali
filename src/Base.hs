@@ -5,12 +5,14 @@ module Base
   , (<*->)
   , (<$->)
   , mapS
+  , throwError
   , ByteString
   , Word8
   , Word16
   , Word32
   ) where
 
+import           Control.Monad.Except (throwError)
 import           Data.ByteString.Lazy (ByteString)
 import           Data.Functor         (($>), (<&>))
 import           Data.Word            (Word16, Word32, Word8)

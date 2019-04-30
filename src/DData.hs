@@ -1,17 +1,34 @@
 {-
 Data mapping for Java class data
 See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html
+
+Note that this represents the first iteration, where we focus on parsing.
+All instances of indices are left as is, and no verification is made
+with regards to the indices.
 -}
-module Class where
+module DData
+  ( Index
+  , FieldAccess(..)
+  , FieldAccessInfo(..)
+  , ClassFile(..)
+  , ConstantPool(..)
+  , ConstantPoolInfo(..)
+  , CpMethodHandle(..)
+  , Interfaces(..)
+  , AccessFlag(..)
+  , FieldDescriptor(..)
+  , MethodDescriptor(..)
+  , Fields(..)
+  , FieldInfo(..)
+  , Methods(..)
+  , MethodInfo(..)
+  , Attributes(..)
+  , AttributeInfo(..)
+  , ExceptionTables(..)
+  , ExceptionTable(..)
+  ) where
 
 import           Base
-import           Instructions
-
-type TODO = ()
-
-type VarIndex = Int
-
-type LabelName = String
 
 type Index = Word16
 
@@ -43,12 +60,6 @@ data ClassFile = ClassFile
 newtype ConstantPool =
   ConstantPool [ConstantPoolInfo]
   deriving (Eq)
-
-cpInfo :: ConstantPool -> Index -> ByteString
-(ConstantPool pool) `cpInfo` i =
-  case pool !! (fromIntegral i - 1) of
-    CpInfo info -> info
-    _ -> error $ "ConstantPool did not return info at index " ++ show i
 
 instance Show ConstantPool where
   show (ConstantPool inf) =
@@ -173,14 +184,6 @@ data AttributeInfo =
   AttributeInfo Index
                 ByteString
   deriving (Show, Eq)
-
-data AttributeInfo' = ACode
-  { stackLimit      :: Word16
-  , localLimit      :: Word16
-  , code            :: Instructions
-  , exceptionTables :: ExceptionTables
-  , cAttrs          :: Attributes
-  } deriving (Show, Eq)
 
 newtype ExceptionTables =
   ExceptionTables [ExceptionTable]

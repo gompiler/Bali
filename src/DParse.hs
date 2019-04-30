@@ -6,24 +6,29 @@ Note that values are stored using big-endian
 References:
 - https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.1
 -}
+{-# LANGUAGE FlexibleInstances #-}
+
 module DParse
   ( dparse
+  , DParser
   , Parser
-  , module Class
+  , module DData
   ) where
 
 import           Base
-import           Class
 import           Control.Monad            (replicateM)
 import           Data.Binary              (encode)
 import qualified Data.Binary.Get          as G
 import           Data.ByteString.Internal (c2w, w2c)
 import           Data.ByteString.Lazy     (pack)
+import           DData
 import           Instructions
 import           Text.Megaparsec
 
 --import           Text.Megaparsec.Byte
 type Parser = Parsec DParseError ByteString
+
+type DParser = Parser ClassFile
 
 data DParseError
   = InvalidConstantPoolTag Integer

@@ -5,4 +5,4 @@ import           Text.Megaparsec
 main :: IO ()
 main = do
   f <- LB.readFile "test/resources/Test.class"
-  parseTest (dparse :: Parser ClassFile) f
+  parseTest (dparse :: DParser) f
