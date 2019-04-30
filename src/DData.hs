@@ -26,6 +26,7 @@ module DData
   , AttributeInfo(..)
   , ExceptionTables(..)
   , ExceptionTable(..)
+  , showIndexed
   ) where
 
 import           Base
@@ -61,12 +62,17 @@ newtype ConstantPool =
   ConstantPool [ConstantPoolInfo]
   deriving (Eq)
 
+showIndexed :: Show a => Integer -> String -> [a] -> String
+showIndexed startIndex tag items =
+  tag ++
+  if null items
+    then " []"
+    else "\n" ++ concatMap showItem (zip [startIndex ..] items)
+  where
+    showItem (i, v) = "\t" ++ show i ++ ": " ++ show v ++ "\n"
+
 instance Show ConstantPool where
-  show (ConstantPool inf) =
-    "ConstantPool\n" ++ concatMap showInfo (zip [1 ..] inf)
-    where
-      showInfo :: (Integer, ConstantPoolInfo) -> String
-      showInfo (i, info) = "\t" ++ show i ++ ": " ++ show info ++ "\n"
+  show (ConstantPool info) = showIndexed 1 "ConstantPool" info
 
 -- | Constant pool info
 -- See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.4

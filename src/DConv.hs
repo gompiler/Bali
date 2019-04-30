@@ -42,13 +42,13 @@ class DConvertible a b where
   conv :: ConstantPool -> a -> DConv b
 
 instance DConvertible T.Interfaces Interfaces where
-  conv = undefined
+  conv _ _ = return $ Interfaces []
 
 instance DConvertible T.Fields Fields where
-  conv = undefined
+  conv _ _ = return $ Fields []
 
 instance DConvertible T.Methods Methods where
-  conv = undefined
+  conv _ _ = return $ Methods []
 
 instance DConvertible T.Attributes Attributes where
-  conv = undefined
+  conv _ _ = return $ Attributes []

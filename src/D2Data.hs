@@ -29,7 +29,7 @@ import           DData        (AccessFlag (..), CpMethodHandle (..),
                                ExceptionTable (..), ExceptionTables (..),
                                FieldAccess (..), FieldAccessInfo (..),
                                FieldDescriptor (..), Interfaces (..),
-                               MethodDescriptor (..))
+                               MethodDescriptor (..), showIndexed)
 import           Instructions
 
 type TODO = ()
@@ -52,11 +52,7 @@ newtype ConstantPool =
   deriving (Eq)
 
 instance Show ConstantPool where
-  show (ConstantPool inf) =
-    "ConstantPool\n" ++ concatMap showInfo (zip [1 ..] inf)
-    where
-      showInfo :: (Integer, ConstantPoolInfo) -> String
-      showInfo (i, info) = "\t" ++ show i ++ ": " ++ show info ++ "\n"
+  show (ConstantPool info) = showIndexed 1 "ConstantPool"  info
 
 data RefInfo = RefInfo
   { rClass :: ByteString
