@@ -19,12 +19,26 @@ import           Data.Binary              (encode)
 import qualified Data.Binary.Get          as G
 import           Data.ByteString.Internal (c2w, w2c)
 import           Data.ByteString.Lazy     (pack)
-import           Data.Void
 import           Instructions
 import           Text.Megaparsec
 
 --import           Text.Megaparsec.Byte
-type Parser = Parsec Void ByteString
+type Parser = Parsec DParseError ByteString
+
+data DParseError
+  = InvalidConstantPoolTag Integer
+  | InvalidRefKind Integer
+  | InvalidFieldDescriptor Char
+  | General String
+  deriving (Show, Eq, Ord)
+
+instance ShowErrorComponent DParseError where
+  showErrorComponent err =
+    case err of
+      InvalidConstantPoolTag i -> "Invalid constant pool tag " ++ show i
+      InvalidRefKind i         -> "Invalid reference kind " ++ show i
+      InvalidFieldDescriptor c -> "Invalid field descriptor " ++ show c
+      General s                -> s
 
 class DParse a where
   dparse :: Parser a
@@ -69,7 +83,7 @@ instance DParse ConstantPool where
 instance DParse ConstantPoolInfo where
   dparse' = info =<< u1 "constant pool info"
     where
-      info :: Int -> Parser ConstantPoolInfo
+      info :: Integer -> Parser ConstantPoolInfo
       info 7 = CpClass <$> nameIndex
       info 9 = CpFieldRef <$> classIndex <*> ntIndex
       info 10 = CpMethodRef <$> classIndex <*> ntIndex
@@ -85,26 +99,26 @@ instance DParse ConstantPoolInfo where
         b <- takeP (Just "string info") l
         return $ CpInfo b
       info 15 =
-        CpMethodHandle <$> (refKind <$> u1 "reference kind") <*>
+        CpMethodHandle <$> (refKind =<< u1 "reference kind") <*>
         u2 "reference index"
           -- Note that the reference kind should actually be parsed first
         where
-          refKind :: Integer -> CpMethodHandle
+          refKind :: Integer -> Parser CpMethodHandle
           refKind kind =
             case kind of
-              1 -> CpmGetField
-              2 -> CpmGetStatic
-              3 -> CpmPutField
-              4 -> CpmPutStatic
-              5 -> CpmInvokeVirtual
-              6 -> CpmInvokeStatic
-              7 -> CpmInvokeSpecial
-              8 -> CpmNewInvokeSpecial
-              9 -> CpmInvokeInterface
-              _ -> error "Invalid reference kind" -- TODO throw parsec error
+              1 -> pure CpmGetField
+              2 -> pure CpmGetStatic
+              3 -> pure CpmPutField
+              4 -> pure CpmPutStatic
+              5 -> pure CpmInvokeVirtual
+              6 -> pure CpmInvokeStatic
+              7 -> pure CpmInvokeSpecial
+              8 -> pure CpmNewInvokeSpecial
+              9 -> pure CpmInvokeInterface
+              _ -> customFailure $ InvalidRefKind kind
       info 16 = CpMethodType <$> descIndex
       info 18 = CpInvokeDynamic <$> u2 "bootstrap method attr index" <*> ntIndex
-      info _ = error "Invalid tag" -- TODO throw parsec error
+      info i = customFailure $ InvalidConstantPoolTag i
       classIndex = u2 "class index"
       ntIndex = u2 "name and type index"
       bIndex = u2 "bytes"
@@ -166,7 +180,7 @@ instance DParse FieldDescriptor where
       'S' -> pure TShort
       'Z' -> pure TBool
       '[' -> TArray <$> dparse'
-      _ -> error "Invalid field type"
+      c -> customFailure $ InvalidFieldDescriptor c
     where
       semicolon :: Word8
       semicolon = c2w ';'
