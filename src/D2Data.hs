@@ -2,34 +2,37 @@
 Data mapping for Java class data
 See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html
 -}
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module D2Data
   ( FieldAccess(..)
   , FieldAccessInfo(..)
   , ClassFile(..)
-  , ConstantPool(..)
+  , ConstantPool
+  , ConstantPool'(..)
   , ConstantPoolInfo(..)
   , CpMethodHandle(..)
-  , Interfaces(..)
+  , Interfaces
   , AccessFlag(..)
   , FieldDescriptor(..)
   , MethodDescriptor(..)
-  , Fields(..)
+  , Fields
   , FieldInfo(..)
-  , Methods(..)
+  , Methods
   , MethodInfo(..)
-  , Attributes(..)
+  , Attributes
   , AttributeInfo(..)
-  , ExceptionTables(..)
+  , ExceptionTables
   , ExceptionTable(..)
   , RefInfo(..)
   ) where
 
 import           Base
-import           DData        (AccessFlag (..), CpMethodHandle (..),
-                               ExceptionTable (..), ExceptionTables (..),
-                               FieldAccess (..), FieldAccessInfo (..),
-                               FieldDescriptor (..), Interfaces (..),
-                               MethodDescriptor (..), showIndexed)
+import           DData        (AccessFlag (..), ConstantPool' (..),
+                               CpMethodHandle (..), ExceptionTable (..),
+                               ExceptionTables, FieldAccess (..),
+                               FieldAccessInfo (..), FieldDescriptor (..),
+                               MethodDescriptor (..))
 import           Instructions
 
 type TODO = ()
@@ -47,12 +50,7 @@ data ClassFile = ClassFile
   , attrs        :: Attributes
   } deriving (Show, Eq)
 
-newtype ConstantPool =
-  ConstantPool [ConstantPoolInfo]
-  deriving (Eq)
-
-instance Show ConstantPool where
-  show (ConstantPool info) = showIndexed 1 "ConstantPool"  info
+type ConstantPool = ConstantPool' ConstantPoolInfo
 
 data RefInfo = RefInfo
   { rClass :: ByteString
@@ -91,9 +89,9 @@ data ConstantPoolInfo
                     RefInfo
   deriving (Show, Eq)
 
-newtype Fields =
-  Fields [FieldInfo]
-  deriving (Show, Eq)
+type Interfaces = [ByteString]
+
+type Fields = [FieldInfo]
 
 data FieldInfo = FieldInfo
   { fAccessFlags :: AccessFlag
@@ -102,9 +100,7 @@ data FieldInfo = FieldInfo
   , fAttrs       :: Attributes
   } deriving (Show, Eq)
 
-newtype Methods =
-  Methods [MethodInfo]
-  deriving (Show, Eq)
+type Methods = [MethodInfo]
 
 data MethodInfo = MethodInfo
   { mAccessFlags :: AccessFlag
@@ -113,9 +109,7 @@ data MethodInfo = MethodInfo
   , mAttrs       :: Attributes
   } deriving (Show, Eq)
 
-newtype Attributes =
-  Attributes [AttributeInfo]
-  deriving (Show, Eq)
+type Attributes = [AttributeInfo]
 
 data AttributeInfo = ACode
   { stackLimit      :: Word16

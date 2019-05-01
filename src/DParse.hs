@@ -129,16 +129,16 @@ instance DParse ConstantPoolInfo where
       bIndex = u2 "bytes"
 
 instance DParse Interfaces where
-  dparse' = Interfaces <$> dparseM (u2 "interfaces count") (u2 "interfaces")
+  dparse' = dparseM (u2 "interfaces count") (u2 "interfaces")
 
 instance DParse Fields where
-  dparse' = Fields <$> dparse2M "fields"
+  dparse' = dparse2M "fields"
 
 instance DParse FieldInfo where
   dparse' = FieldInfo <$> dparse' <*> nameIndex <*> descIndex <*> dparse'
 
 instance DParse Methods where
-  dparse' = Methods <$> dparse2M "methods"
+  dparse' = dparse2M "methods"
 
 instance DParse MethodInfo where
   dparse' = MethodInfo <$> dparse' <*> nameIndex <*> descIndex <*> dparse'
@@ -147,7 +147,7 @@ instance DParse AccessFlag where
   dparse' = AccessFlag <$> u2 "access flags"
 
 instance DParse Attributes where
-  dparse' = Attributes <$> dparse2M "attributes"
+  dparse' = dparse2M "attributes"
 
 instance DParse AttributeInfo where
   dparse' = do
@@ -197,7 +197,7 @@ instance DParse Instruction where
   dparse' = undefined
 
 instance DParse ExceptionTables where
-  dparse' = ExceptionTables <$> dparse2M "exception table"
+  dparse' = dparse2M "exception table"
 
 instance DParse ExceptionTable where
   dparse' = undefined

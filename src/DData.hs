@@ -6,25 +6,33 @@ Note that this represents the first iteration, where we focus on parsing.
 All instances of indices are left as is, and no verification is made
 with regards to the indices.
 -}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE TypeSynonymInstances       #-}
+{-# LANGUAGE DeriveTraversable #-}
+
 module DData
   ( Index
   , FieldAccess(..)
   , FieldAccessInfo(..)
   , ClassFile(..)
-  , ConstantPool(..)
+  , ConstantPool
+  , ConstantPool'(..)
   , ConstantPoolInfo(..)
   , CpMethodHandle(..)
-  , Interfaces(..)
+  , Interfaces
   , AccessFlag(..)
   , FieldDescriptor(..)
   , MethodDescriptor(..)
-  , Fields(..)
+  , Fields
   , FieldInfo(..)
-  , Methods(..)
+  , Methods
   , MethodInfo(..)
-  , Attributes(..)
+  , Attributes
   , AttributeInfo(..)
-  , ExceptionTables(..)
+  , ExceptionTables
   , ExceptionTable(..)
   , showIndexed
   ) where
@@ -58,9 +66,9 @@ data ClassFile = ClassFile
   , attrs        :: Attributes
   } deriving (Show, Eq)
 
-newtype ConstantPool =
-  ConstantPool [ConstantPoolInfo]
-  deriving (Eq)
+newtype ConstantPool' a =
+  ConstantPool [a]
+  deriving (Eq, Monad, Applicative, Functor, Traversable, Foldable)
 
 showIndexed :: Show a => Integer -> String -> [a] -> String
 showIndexed startIndex tag items =
@@ -71,8 +79,10 @@ showIndexed startIndex tag items =
   where
     showItem (i, v) = "\t" ++ show i ++ ": " ++ show v ++ "\n"
 
-instance Show ConstantPool where
-  show (ConstantPool info) = showIndexed 1 "ConstantPool" info
+instance Show a => Show (ConstantPool' a) where
+  show (ConstantPool l) = showIndexed 1 "ConstantPool" l
+
+type ConstantPool = ConstantPool' ConstantPoolInfo
 
 -- | Constant pool info
 -- See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.4
@@ -135,13 +145,9 @@ newtype AccessFlag =
   AccessFlag Word16
   deriving (Show, Eq)
 
-newtype Interfaces =
-  Interfaces [Word16]
-  deriving (Show, Eq)
+type Interfaces = [Index]
 
-newtype Fields =
-  Fields [FieldInfo]
-  deriving (Show, Eq)
+type Fields = [FieldInfo]
 
 data FieldInfo = FieldInfo
   { fAccessFlags :: AccessFlag
@@ -171,9 +177,7 @@ data MethodDescriptor =
   MethodDescriptor [FieldDescriptor]
                    (Maybe FieldDescriptor)
 
-newtype Methods =
-  Methods [MethodInfo]
-  deriving (Show, Eq)
+type Methods = [MethodInfo]
 
 data MethodInfo = MethodInfo
   { mAccessFlags :: AccessFlag
@@ -182,18 +186,14 @@ data MethodInfo = MethodInfo
   , mAttrs       :: Attributes
   } deriving (Show, Eq)
 
-newtype Attributes =
-  Attributes [AttributeInfo]
-  deriving (Show, Eq)
+type Attributes = [AttributeInfo]
 
 data AttributeInfo =
   AttributeInfo Index
                 ByteString
   deriving (Show, Eq)
 
-newtype ExceptionTables =
-  ExceptionTables [ExceptionTable]
-  deriving (Show, Eq)
+type ExceptionTables = [ExceptionTable]
 
 data ExceptionTable = ExceptionTable
   { eStartPc   :: Word16
