@@ -14,6 +14,8 @@ import           D2Data
 import           Data.Function        ((&))
 import           DData                (Index)
 import qualified DData                as T
+import           Instructions
+import           Text.Megaparsec
 
 data ConvError
   = BadConstantPoolConversion Info
@@ -24,15 +26,28 @@ data ConvError
                           CpCategory
                           Index
                           ConstantPoolInfo
+  | ParseError String
   | Generic String
-  deriving (Eq)
+  deriving (Eq, Ord)
+
+type Parser = Parsec ConvError ByteString
+
+instance ShowErrorComponent ConvError where
+  showErrorComponent = show
 
 instance Show ConvError where
-  show (BadConstantPoolConversion cp tag i info) =
-    "Bad constant pool info at index " ++
-    show i ++
-    ": expected " ++ show tag ++ " but got " ++ show info ++ "\n" ++ show cp
-  show (Generic s) = "Generic error: " ++ s
+  show err =
+    case err of
+      BadConstantPoolConversion cp tag i info ->
+        "Bad constant pool info at index " ++
+        show i ++
+        ": expected " ++ show tag ++ " but got " ++ show info ++ "\n" ++ show cp
+      BadConstantPoolAccess cp tag i info ->
+        "Bad constant pool info at index " ++
+        show i ++
+        ": expected " ++ show tag ++ " but got " ++ show info ++ "\n" ++ show cp
+      ParseError s -> s
+      Generic s -> "Generic error: " ++ s
 
 type DConv = Either ConvError
 
@@ -57,8 +72,14 @@ dconv T.ClassFile { T.minorVersion
     conv cp methods <*>
     conv cp attrs
 
+class Parseable a where
+  parser :: ConstantPool -> Parser a
+
 class DConvertible a b where
   conv :: ConstantPool -> a -> DConv b
+
+instance Parseable a => DConvertible ByteString a where
+  conv cp = either (Left . ParseError . errorBundlePretty) Right . parse (parser cp) ""
 
 instance DConvertible Index ByteString where
   conv = getInfo
@@ -70,13 +91,35 @@ instance (Traversable t, DConvertible a b) => DConvertible (t a) (t b) where
   conv = mapM . conv
 
 instance DConvertible T.FieldInfo FieldInfo where
-  conv _ _ = undefined
+  conv _ _ =
+    return
+      FieldInfo
+        { fAccessFlags = AccessFlag 0
+        , fNameIndex = 0
+        , fDescIndex = 0
+        , fAttrs = []
+        }
 
 instance DConvertible T.MethodInfo MethodInfo where
-  conv _ _ = undefined
+  conv _ _ =
+    return
+      MethodInfo
+        { mAccessFlags = AccessFlag 0
+        , mNameIndex = 0
+        , mDescIndex = 0
+        , mAttrs = []
+        }
 
 instance DConvertible T.AttributeInfo AttributeInfo where
-  conv cp (T.AttributeInfo index s) = undefined
+  conv cp (T.AttributeInfo index s) =
+    return
+      ACode
+        { stackLimit = 0
+        , localLimit = 0
+        , code = Instructions []
+        , exceptionTables = []
+        , cAttrs = []
+        }
 
 ----
 data CpCategory
@@ -88,7 +131,7 @@ data CpCategory
   | CpcNameAndType
   | CpcInfo
   | CpcOther
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq)
 
 type ConvInfo = Either T.ConstantPoolInfo ConstantPoolInfo
 
@@ -106,13 +149,15 @@ type GetConvInfo a = GetInfo' ConvInfo a
 -- Note that regardless of the original pool, accessors are done with the non indexed info variants
 -- We provide mappings to the variant, and fallback to an error if it does not exist
 class ConstantPoolGet c where
-  throw :: (ConstantPool' c -> CpCategory -> Index -> c -> ConvError)
-  _map :: c -> Maybe ConstantPoolInfo
+  _cpThrow :: ConstantPool' c -> CpCategory -> Index -> c -> ConvError
+  cpThrowError :: ConstantPool' c -> CpCategory -> Index -> c -> DConv a
+  cpThrowError cp tag i cpi = throwError $ _cpThrow cp tag i cpi
+  _cpMap :: c -> Maybe ConstantPoolInfo
   get :: CpCategory -> (ConstantPoolInfo -> Maybe a) -> GetInfo' c a
   get tag f cp'@(ConstantPool cp) index =
     let cpi = cp !! (fromIntegral index - 1)
-        err = throwError $ throw cp' tag index cpi
-     in maybe err return $ f =<< _map cpi
+        err = cpThrowError cp' tag index cpi
+     in maybe err return $ f =<< _cpMap cpi
   getInfo :: GetInfo' c ByteString
   getInfo =
     get
@@ -157,12 +202,12 @@ class ConstantPoolGet c where
          _ -> Nothing)
 
 instance ConstantPoolGet ConstantPoolInfo where
-  throw = BadConstantPoolAccess
-  _map = pure
+  _cpThrow = BadConstantPoolAccess
+  _cpMap = pure
 
 instance ConstantPoolGet ConvInfo where
-  throw = BadConstantPoolConversion
-  _map = either (const Nothing) Just
+  _cpThrow = BadConstantPoolConversion
+  _cpMap = either (const Nothing) Just
 
 -- | Convert constant pool indices to their actual data
 cpconv :: T.ConstantPool -> DConv ConstantPool
@@ -198,8 +243,7 @@ cpconv cp =
       where
         extractInfo' :: Index -> ConvInfo -> DConv ConstantPoolInfo
         extractInfo' _ (Right cpi) = return cpi
-        extractInfo' i cpi =
-          throwError $ BadConstantPoolConversion info' CpcOther i cpi
+        extractInfo' i cpi         = cpThrowError info' CpcOther i cpi
     -- | Stage 1: Extract cpinfo for appropriate indices
     convInfo :: ConvStage
     convInfo info (Left cpi) =

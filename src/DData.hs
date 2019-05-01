@@ -64,11 +64,11 @@ data ClassFile = ClassFile
   , fields       :: Fields
   , methods      :: Methods
   , attrs        :: Attributes
-  } deriving (Show, Eq)
+  } deriving (Show, Ord, Eq)
 
 newtype ConstantPool' a =
   ConstantPool [a]
-  deriving (Eq, Monad, Applicative, Functor, Traversable, Foldable)
+  deriving (Eq, Ord, Monad, Applicative, Functor, Traversable, Foldable)
 
 showIndexed :: Show a => Integer -> String -> [a] -> String
 showIndexed startIndex tag items =
@@ -116,7 +116,7 @@ data ConstantPoolInfo
   -- bootstrap_method_attr_index, name_and_type_index
   | CpInvokeDynamic Index
                     Index
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq)
 
 -- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-5.html#jvms-5.4.3.5
 data CpMethodHandle
@@ -138,12 +138,12 @@ data CpMethodHandle
   | CpmNewInvokeSpecial
   -- invokeinterface C.m:(A*)T
   | CpmInvokeInterface
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq)
 
 -- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.2
 newtype AccessFlag =
   AccessFlag Word16
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq)
 
 type Interfaces = [Index]
 
@@ -154,7 +154,7 @@ data FieldInfo = FieldInfo
   , fNameIndex   :: Word16
   , fDescIndex   :: Word16
   , fAttrs       :: Attributes
-  } deriving (Show, Eq)
+  } deriving (Show, Ord, Eq)
 
 -- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.3.2-200
 -- Aka type
@@ -169,7 +169,7 @@ data FieldDescriptor
   | TShort
   | TBool
   | TArray FieldDescriptor
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq)
 
 -- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.3.3
 -- Aka signature
@@ -184,14 +184,14 @@ data MethodInfo = MethodInfo
   , mNameIndex   :: Word16
   , mDescIndex   :: Word16
   , mAttrs       :: Attributes
-  } deriving (Show, Eq)
+  } deriving (Show, Ord, Eq)
 
 type Attributes = [AttributeInfo]
 
 data AttributeInfo =
   AttributeInfo Index
                 ByteString
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq)
 
 type ExceptionTables = [ExceptionTable]
 
@@ -200,4 +200,4 @@ data ExceptionTable = ExceptionTable
   , eEndPc     :: Word16
   , eHandlerPc :: Word16
   , eCatchType :: Word16
-  } deriving (Show, Eq)
+  } deriving (Show, Ord, Eq)

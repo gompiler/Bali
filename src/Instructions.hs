@@ -11,12 +11,12 @@ data NumericType
   | TnLong
   | TnFloat
   | TnDouble
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq)
 
 data IntegralType
   = TiInt
   | TiLong
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq)
 
 data BitOp
   = Or
@@ -24,7 +24,7 @@ data BitOp
   | Shr
   | Ushr
   | Xor
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq)
 
 data NumOp
   = Add
@@ -33,7 +33,7 @@ data NumOp
   | Div
   | Neg
   | Rem
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq)
 
 data PrimitiveType
   = TpByte
@@ -43,7 +43,7 @@ data PrimitiveType
   | TpLong
   | TpFloat
   | TpDouble
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq)
 
 data IRCmp
   = G_
@@ -52,13 +52,13 @@ data IRCmp
   | NEQ_
   | L_
   | LT_
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq)
 
 data Ldc
   = Ldc Word8
   | LdcW Word16
   | Ldc2W Word16
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq)
 
 type IRIndex = Word8
 
@@ -68,7 +68,7 @@ type Label = Word16
 
 newtype Instructions =
   Instructions [Instruction]
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq)
 
 data Instruction
   -- arrayref, index -> value
@@ -159,4 +159,4 @@ data Instruction
   | Nop
   | Pop
   | Pop2
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq)
