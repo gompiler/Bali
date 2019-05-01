@@ -28,7 +28,10 @@ data ConvError
                           ConstantPoolInfo
   | ParseError String
   | Generic String
-  deriving (Eq, Ord)
+  deriving (Eq)
+
+instance Ord ConvError where
+  compare _ _ = EQ
 
 type Parser = Parsec ConvError ByteString
 
@@ -131,7 +134,7 @@ data CpCategory
   | CpcNameAndType
   | CpcInfo
   | CpcOther
-  deriving (Show, Ord, Eq)
+  deriving (Show, Eq)
 
 type ConvInfo = Either T.ConstantPoolInfo ConstantPoolInfo
 

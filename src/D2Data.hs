@@ -48,7 +48,7 @@ data ClassFile = ClassFile
   , fields       :: Fields
   , methods      :: Methods
   , attrs        :: Attributes
-  } deriving (Show, Ord, Eq)
+  } deriving (Show, Eq)
 
 type ConstantPool = ConstantPool' ConstantPoolInfo
 
@@ -56,7 +56,7 @@ data RefInfo = RefInfo
   { rClass :: ByteString
   , rName  :: ByteString
   , rInfo  :: ByteString
-  } deriving (Show, Ord, Eq)
+  } deriving (Show, Eq)
 
 -- | Constant pool info
 -- See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.4
@@ -87,7 +87,7 @@ data ConstantPoolInfo
   -- bootstrap_method_attr_index, name_and_type_index
   | CpInvokeDynamic TODO
                     RefInfo
-  deriving (Show, Ord, Eq)
+  deriving (Show, Eq)
 
 type Interfaces = [ByteString]
 
@@ -98,7 +98,7 @@ data FieldInfo = FieldInfo
   , fNameIndex   :: Word16
   , fDescIndex   :: Word16
   , fAttrs       :: Attributes
-  } deriving (Show, Ord, Eq)
+  } deriving (Show, Eq)
 
 type Methods = [MethodInfo]
 
@@ -107,7 +107,7 @@ data MethodInfo = MethodInfo
   , mNameIndex   :: Word16
   , mDescIndex   :: Word16
   , mAttrs       :: Attributes
-  } deriving (Show, Ord, Eq)
+  } deriving (Show, Eq)
 
 type Attributes = [AttributeInfo]
 
@@ -117,4 +117,4 @@ data AttributeInfo = ACode
   , code            :: Instructions
   , exceptionTables :: ExceptionTables
   , cAttrs          :: Attributes
-  } deriving (Show, Ord, Eq)
+  } deriving (Show, Eq)
