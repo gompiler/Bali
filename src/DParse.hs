@@ -25,6 +25,7 @@ import           DData
 import           Instructions
 import           Text.Megaparsec
 
+
 --import           Text.Megaparsec.Byte
 type Parser = Parsec DParseError ByteString
 
@@ -94,10 +95,10 @@ instance DParse ConstantPoolInfo where
       info 10 = CpMethodRef <$> classIndex <*> ntIndex
       info 11 = CpInterfaceMethodRef <$> classIndex <*> ntIndex
       info 8 = CpString <$> classIndex
-      info 3 = CpInteger <$> bIndex
-      info 4 = CpFloat <$> bIndex
-      info 5 = CpLong <$> bIndex <*> bIndex
-      info 6 = CpDouble <$> bIndex <*> bIndex
+      info 3 = CpInteger <$> u4 "integer"
+      info 4 = CpFloat <$> u4 "float" -- TODO verify float conversion
+      info 5 = CpLong <$> u8 "long"
+      info 6 = CpDouble <$> u8 "double"
       info 12 = CpNameAndType <$> nameIndex <*> descIndex
       info 1 = do
         l <- u2 "length"
@@ -126,7 +127,6 @@ instance DParse ConstantPoolInfo where
       info i = customFailure $ InvalidConstantPoolTag i
       classIndex = u2 "class index"
       ntIndex = u2 "name and type index"
-      bIndex = u2 "bytes"
 
 instance DParse Interfaces where
   dparse' = dparseM (u2 "interfaces count") (u2 "interfaces")
@@ -210,6 +210,9 @@ u2 err = fromIntegral . G.runGet G.getWord16be <$> takeP (Just err) 2
 
 u4 :: Num a => String -> Parser a
 u4 err = fromIntegral . G.runGet G.getWord32be <$> takeP (Just err) 4
+
+u8 :: Num a => String -> Parser a
+u8 err = fromIntegral . G.runGet G.getWord64be <$> takeP (Just err) 8
 
 nameIndex :: Parser Word16
 nameIndex = u2 "name index"

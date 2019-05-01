@@ -8,14 +8,15 @@ module DConv
   ) where
 
 import           Base
-import           Control.Monad        (zipWithM)
-import           Control.Monad.Except (throwError)
+import           Control.Monad              (zipWithM)
+import           Control.Monad.Except       (throwError)
 import           D2Data
-import           Data.Function        ((&))
-import           DData                (Index)
-import qualified DData                as T
+import           Data.Function              ((&))
+import           DData                      (Index)
+import qualified DData                      as T
 import           Instructions
 import           Text.Megaparsec
+import qualified Text.Megaparsec.Byte.Lexer as L
 
 data ConvError
   = BadConstantPoolConversion Info
@@ -30,7 +31,10 @@ data ConvError
   | Generic String
   deriving (Eq)
 
-instance Ord ConvError where
+instance Ord ConvError
+  -- Just to satisfy ShowErrorComponent
+  -- We don't care what order the errors are displayed
+                                                       where
   compare _ _ = EQ
 
 type Parser = Parsec ConvError ByteString
@@ -82,7 +86,8 @@ class DConvertible a b where
   conv :: ConstantPool -> a -> DConv b
 
 instance Parseable a => DConvertible ByteString a where
-  conv cp = either (Left . ParseError . errorBundlePretty) Right . parse (parser cp) ""
+  conv cp =
+    either (Left . ParseError . errorBundlePretty) Right . parse (parser cp) ""
 
 instance DConvertible Index ByteString where
   conv = getInfo
@@ -232,12 +237,12 @@ cpconv cp =
         initInfo' :: T.ConstantPoolInfo -> ConvInfo
         initInfo' cpi =
           case cpi of
-            T.CpInteger b    -> Right $ CpInteger b
-            T.CpFloat b      -> Right $ CpFloat b
-            T.CpLong b1 b2   -> Right $ CpLong b1 b2
-            T.CpDouble b1 b2 -> Right $ CpDouble b1 b2
-            T.CpInfo s       -> Right $ CpInfo s
-            _                -> Left cpi
+            T.CpInteger n -> Right $ CpInteger n
+            T.CpFloat n   -> Right $ CpFloat n
+            T.CpLong n    -> Right $ CpLong n
+            T.CpDouble n  -> Right $ CpDouble n
+            T.CpInfo s    -> Right $ CpInfo s
+            _             -> Left cpi
     -- | Convert info back to constant pool
     -- It is expected that all entries are converted (on the right)
     extractInfo :: Info -> DConv ConstantPool

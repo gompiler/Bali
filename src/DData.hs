@@ -38,6 +38,8 @@ module DData
   ) where
 
 import           Base
+import GHC.Int (Int32)
+import Data.Int (Int64)
 
 type Index = Word16
 
@@ -98,13 +100,11 @@ data ConstantPoolInfo
                          Index
   | CpString Index
   -- bytes
-  | CpInteger Word32
-  | CpFloat Word32
+  | CpInteger Int32
+  | CpFloat Float
   -- high_bytes, low_bytes
-  | CpLong Word32
-           Word32
-  | CpDouble Word32
-             Word32
+  | CpLong Int64
+  | CpDouble Double
   -- name_index, descriptor_index
   | CpNameAndType Index
                   Index

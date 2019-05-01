@@ -10,12 +10,13 @@ module Base
   , Word8
   , Word16
   , Word32
+  , Word64
   ) where
 
 import           Control.Monad.Except (throwError)
 import           Data.ByteString.Lazy (ByteString)
 import           Data.Functor         (($>), (<&>))
-import           Data.Word            (Word16, Word32, Word8)
+import           Data.Word            (Word16, Word32,Word64, Word8)
 
 infixl 4 <$->, <*->, <$$>
 

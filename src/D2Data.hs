@@ -34,6 +34,8 @@ import           DData        (AccessFlag (..), ConstantPool' (..),
                                FieldAccessInfo (..), FieldDescriptor (..),
                                MethodDescriptor (..))
 import           Instructions
+import GHC.Int (Int32)
+import Data.Int (Int64)
 
 type TODO = ()
 
@@ -69,13 +71,11 @@ data ConstantPoolInfo
   | CpInterfaceMethodRef RefInfo
   | CpString ByteString
   -- bytes
-  | CpInteger Word32
-  | CpFloat Word32
+  | CpInteger Int32
+  | CpFloat Float
   -- high_bytes, low_bytes
-  | CpLong Word32
-           Word32
-  | CpDouble Word32
-             Word32
+  | CpLong Int64
+  | CpDouble Double
   -- name_index, descriptor_index
   | CpNameAndType ByteString
                   ByteString
@@ -117,4 +117,5 @@ data AttributeInfo = ACode
   , code            :: Instructions
   , exceptionTables :: ExceptionTables
   , cAttrs          :: Attributes
-  } deriving (Show, Eq)
+  }
+  | AConst deriving (Show, Eq)
