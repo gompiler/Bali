@@ -20,7 +20,7 @@ module DParse
   ) where
 
 import           Base
-import           Control.Monad              (replicateM)
+import           Control.Monad              (replicateM, void)
 import           Data.Binary                (encode)
 import qualified Data.Binary.Get            as G
 import           Data.ByteString.Internal   (c2w, w2c)
@@ -28,6 +28,7 @@ import           Data.ByteString.Lazy       (pack)
 import           Data.Int                   (Int32)
 import           DData
 import           Instructions
+import           Numeric                    (showHex)
 import           Text.Megaparsec
 import qualified Text.Megaparsec.Byte.Lexer as L
 
@@ -42,6 +43,7 @@ data DParseError
   = InvalidConstantPoolTag Integer
   | InvalidRefKind Integer
   | InvalidFieldDescriptor Char
+  | InvalidOpCode Word8
   | Generic String
   deriving (Show, Eq, Ord)
 
@@ -51,6 +53,7 @@ instance ShowErrorComponent DParseError where
       InvalidConstantPoolTag i -> "Invalid constant pool tag " ++ show i
       InvalidRefKind i         -> "Invalid reference kind " ++ show i
       InvalidFieldDescriptor c -> "Invalid field descriptor " ++ show c
+      InvalidOpCode i          -> "Invalid op code " ++ showHex i "0x"
       Generic s                -> s
 
 class DParse a where
@@ -202,11 +205,26 @@ instance DParse Instructions where
     let parser = many (dparse' :: Parser Instruction) <* eof
     -- TODO see if there is a better way of handling nested instructions
     instrs <-
-      either (customFailure . Generic . show) return $ parse parser "" content
-    return $ Instructions []
+      either (customFailure . Generic . errorBundlePretty) return $
+      parse parser "" content
+    return $ Instructions instrs
 
 instance DParse Instruction where
-  dparse' = Aaload <$ single 0x32 <|> Aaload <$ u1 "todo" -- todo
+  dparse' = instr =<< anySingle
+    where
+      instr :: Word8 -> Parser Instruction
+      instr op =
+        case op of
+          0x32 -> pure Aaload
+          0x33 -> pure $ Paload TpByte
+          0x34 -> pure $ Paload TpChar
+          0x35 -> pure $ Paload TpShort
+          0x2e -> pure $ Paload TpInt
+          0x2f -> pure $ Paload TpLong
+          0x30 -> pure $ Paload TpFloat
+          0x31 -> pure $ Paload TpDouble
+          -- _    -> customFailure $ InvalidOpCode op
+          _ -> pure Aaload
 
 instance DParse ExceptionTables where
   dparse' = ExceptionTables <$> dparse2M "exception table"
