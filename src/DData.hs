@@ -8,7 +8,6 @@ with regards to the indices.
 -}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns    #-}
-{-# LANGUAGE RecordWildCards    #-}
 
 module DData
   ( Index
@@ -26,12 +25,10 @@ module DData
   , MethodDescriptor(..)
   , Fields
   , Fields'(..)
-  , FieldInfo
-  , FieldInfo'(..)
+  , FieldInfo(..)
   , Methods
   , Methods'(..)
-  , MethodInfo
-  , MethodInfo'(..)
+  , MethodInfo(..)
   , Attributes
   , Attributes'(..)
   , AttributeInfo(..)
@@ -178,23 +175,12 @@ newtype Fields' l =
 instance Show a => Show (Fields' a) where
   show (Fields l) = showList (Just 0) (Just "Fields") l
 
-data FieldInfo' attr = FieldInfo
+data FieldInfo = FieldInfo
   { fAccessFlags :: AccessFlag
-  , fNameIndex   :: Word16
-  , fDescIndex   :: Word16
-  , fAttrs       :: attr
+  , fNameIndex   :: Index
+  , fDescIndex   :: Index
+  , fAttrs       :: Attributes
   } deriving (Show, Eq)
-
-instance Functor FieldInfo' where
-  fmap f FieldInfo {..} =
-    FieldInfo
-      { fAccessFlags = fAccessFlags
-      , fNameIndex = fNameIndex
-      , fDescIndex = fDescIndex
-      , fAttrs = f fAttrs
-      }
-
-type FieldInfo = FieldInfo' Attributes
 
 -- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.3.2-200
 -- Aka type
@@ -226,23 +212,12 @@ newtype Methods' l =
 instance Show a => Show (Methods' a) where
   show (Methods l) = showList (Just 0) (Just "Methods") l
 
-data MethodInfo' attr = MethodInfo
+data MethodInfo = MethodInfo
   { mAccessFlags :: AccessFlag
-  , mNameIndex   :: Word16
-  , mDescIndex   :: Word16
-  , mAttrs       :: attr
+  , mNameIndex   :: Index
+  , mDescIndex   :: Index
+  , mAttrs       :: Attributes
   } deriving (Show, Eq)
-
-instance Functor MethodInfo' where
-  fmap f MethodInfo {..} =
-    MethodInfo
-      { mAccessFlags = mAccessFlags
-      , mNameIndex = mNameIndex
-      , mDescIndex = mDescIndex
-      , mAttrs = f mAttrs
-      }
-
-type MethodInfo = MethodInfo' Attributes
 
 type Attributes = Attributes' AttributeInfo
 

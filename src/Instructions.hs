@@ -5,6 +5,7 @@ See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-6.html#jvms-6.5
 module Instructions where
 
 import           Base
+import           Data.List (intercalate)
 
 data NumericType
   = TnInt
@@ -68,7 +69,10 @@ type Label = Word16
 
 newtype Instructions =
   Instructions [Instruction]
-  deriving (Show, Eq)
+  deriving (Eq)
+
+instance Show Instructions where
+  show (Instructions l) = intercalate "\n" $ map show l
 
 data Instruction
   -- arrayref, index -> value

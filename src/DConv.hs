@@ -17,7 +17,7 @@ import qualified Data.Binary.Get      as G
 import           Data.Function        ((&))
 import           DData                (Index)
 import qualified DData                as T
-import           DParse               (DParse (..), DParseError)
+import           DParse
 import           Instructions
 import           Text.Megaparsec
 
@@ -40,8 +40,7 @@ instance Ord ConvError
                                                        where
   compare _ _ = EQ
 
-type Parser = Parsec ConvError ByteString
-
+--type Parser = Parsec ConvError ByteString
 instance ShowErrorComponent ConvError where
   showErrorComponent = show
 
@@ -75,6 +74,9 @@ dconv T.ClassFile {..} = do
 class DConvertible a b where
   conv :: ConstantPool -> a -> DConv b
 
+instance DConvertible a a where
+  conv _ = pure
+
 instance DParse a => DConvertible ByteString a where
   conv _ = either (Left . ParseError) Right . parse dparse' ""
 
@@ -89,12 +91,14 @@ instance DConvertible T.Fields Fields where
 
 instance DConvertible T.FieldInfo FieldInfo where
   conv cp T.FieldInfo {..} = do
+    fName <- conv cp fNameIndex
+    fDesc <- conv cp fDescIndex
     fAttrs' <- conv cp fAttrs
     return
       FieldInfo
         { fAccessFlags = fAccessFlags
-        , fNameIndex = fNameIndex
-        , fDescIndex = fDescIndex
+        , fName = fName
+        , fDesc = fDesc
         , fAttrs = fAttrs'
         }
 
@@ -103,12 +107,14 @@ instance DConvertible T.Methods Methods where
 
 instance DConvertible T.MethodInfo MethodInfo where
   conv cp T.MethodInfo {..} = do
+    mName <- conv cp mNameIndex
+    mDesc <- conv cp mDescIndex
     mAttrs' <- conv cp mAttrs
     return
       MethodInfo
         { mAccessFlags = mAccessFlags
-        , mNameIndex = mNameIndex
-        , mDescIndex = mDescIndex
+        , mName = mName
+        , mDesc = mDesc
         , mAttrs = mAttrs'
         }
 
@@ -118,18 +124,46 @@ instance DConvertible T.Attributes Attributes where
 instance DConvertible T.AttributeInfo AttributeInfo where
   conv cp (T.AttributeInfo i s) =
     getInfo cp i >>= \case
-      "Code" ->
+      "Code" -> do
+        ACodePart {..} <- convParse attrCodeParser
+        cAttrs <- conv cp pAttributes
         return
           ACode
-            { stackLimit = 0
-            , localLimit = 0
-            , code = Instructions []
-            , exceptionTables = ExceptionTables []
-            , cAttrs = Attributes []
+            { stackLimit = pStackLimit
+            , localLimit = pLocalLimit
+            , code = pCode
+            , exceptionTables = pExceptionTables
+            , cAttrs = cAttrs
             }
+        where attrCodeParser :: Parser ACodePart
+              attrCodeParser = do
+                stackLimit <- u2 "max stack"
+                localLimit <- u2 "max locals"
+                code <- dparse'
+                exceptionTables <- dparse'
+                attrs <- dparse'
+                return
+                  ACodePart
+                    { pStackLimit = stackLimit
+                    , pLocalLimit = localLimit
+                    , pCode = code
+                    , pExceptionTables = exceptionTables
+                    , pAttributes = attrs
+                    }
+      "ConstantValue" -> AConst <$> getInfo cp (G.runGet G.getWord16be s)
       _ -> return $ AConst s
+    where
+      convParse :: Parser a -> DConv a
+      convParse parser = either (Left . ParseError) Right $ parse parser "" s
 
---      "ConstantValue" -> getInfo cp (G.runGet G.getWord16be s) >>= undefined
+data ACodePart = ACodePart
+  { pStackLimit      :: Word16
+  , pLocalLimit      :: Word16
+  , pCode            :: Instructions
+  , pExceptionTables :: ExceptionTables
+  , pAttributes      :: T.Attributes
+  }
+
 data CpCategory
   = CpcClass
   | CpcFieldRef

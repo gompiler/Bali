@@ -2,6 +2,8 @@
 Data mapping for Java class data
 See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html
 -}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module D2Data
@@ -19,15 +21,14 @@ module D2Data
   , MethodDescriptor(..)
   , Fields
   , Fields'(..)
-  , FieldInfo
-  , FieldInfo'(..)
+  , FieldInfo(..)
   , Methods
   , Methods'(..)
-  , MethodInfo
-  , MethodInfo'(..)
+  , MethodInfo(..)
   , Attributes
   , Attributes'(..)
   , AttributeInfo(..)
+  , AttributeInfoKind(..)
   , ExceptionTables
   , ExceptionTables'(..)
   , ExceptionTable(..)
@@ -41,9 +42,8 @@ import           DData        (AccessFlag (..), Attributes' (..),
                                ExceptionTable (..), ExceptionTables,
                                ExceptionTables' (..), FieldAccess (..),
                                FieldAccessInfo (..), FieldDescriptor (..),
-                               FieldInfo' (..), Fields' (..), Interfaces' (..),
-                               MethodDescriptor (..), MethodInfo' (..),
-                               Methods' (..))
+                               Fields' (..), Interfaces' (..),
+                               MethodDescriptor (..), Methods' (..))
 import           GHC.Int      (Int32)
 import           Instructions
 
@@ -99,20 +99,41 @@ data ConstantPoolInfo
                     RefInfo
   deriving (Show, Eq)
 
-data Constant = CString ByteString | CInteger Int32 | CFloat Float | CLong Int64 | CDouble Double
+data Constant
+  = CString ByteString
+  | CInteger Int32
+  | CFloat Float
+  | CLong Int64
+  | CDouble Double
   deriving (Show, Eq)
 
 type Interfaces = Interfaces' ByteString
 
 type Fields = Fields' FieldInfo
 
-type FieldInfo = FieldInfo' Attributes
+-- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.5
+data FieldInfo = FieldInfo
+  { fAccessFlags :: AccessFlag
+  , fName        :: ByteString
+  , fDesc        :: ByteString
+  , fAttrs       :: Attributes
+  } deriving (Show, Eq)
 
 type Methods = Methods' MethodInfo
 
-type MethodInfo = MethodInfo' Attributes
+-- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.6
+data MethodInfo = MethodInfo
+  { mAccessFlags :: AccessFlag
+  , mName        :: ByteString
+  , mDesc        :: ByteString
+  , mAttrs       :: Attributes
+  } deriving (Show, Eq)
 
 type Attributes = Attributes' AttributeInfo
+
+data AttributeInfoKind
+  = ACode'
+  | AConst'
 
 data AttributeInfo
   = ACode { stackLimit      :: Word16

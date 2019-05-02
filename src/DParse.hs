@@ -13,8 +13,10 @@ module DParse
   , Parser
   , DParse(..)
   , DParseError
-  , u1, u2, u4, u8
-  , module DData
+  , u1
+  , u2
+  , u4
+  , u8
   ) where
 
 import           Base
@@ -25,13 +27,14 @@ import           Data.ByteString.Internal   (c2w, w2c)
 import           Data.ByteString.Lazy       (pack)
 import           Data.Int                   (Int32)
 import           DData
-import qualified D2Data as D2
 import           Instructions
 import           Text.Megaparsec
 import qualified Text.Megaparsec.Byte.Lexer as L
 
 --import           Text.Megaparsec.Byte
-type Parser = Parsec DParseError ByteString
+type Parser' e a = Parsec e ByteString a
+
+type Parser a = Parser' DParseError a
 
 type DParser = Parser ClassFile
 
@@ -39,7 +42,7 @@ data DParseError
   = InvalidConstantPoolTag Integer
   | InvalidRefKind Integer
   | InvalidFieldDescriptor Char
-  | General String
+  | Generic String
   deriving (Show, Eq, Ord)
 
 instance ShowErrorComponent DParseError where
@@ -48,7 +51,7 @@ instance ShowErrorComponent DParseError where
       InvalidConstantPoolTag i -> "Invalid constant pool tag " ++ show i
       InvalidRefKind i         -> "Invalid reference kind " ++ show i
       InvalidFieldDescriptor c -> "Invalid field descriptor " ++ show c
-      General s                -> s
+      Generic s                -> s
 
 class DParse a where
   dparse :: Parser a
@@ -196,39 +199,27 @@ instance DParse Instructions where
   dparse' = Instructions <$> dparse4M "code"
 
 instance DParse Instruction where
-  dparse' = undefined
+  dparse' = Aaload <$ u1 "todo" -- todo
 
 instance DParse ExceptionTables where
   dparse' = ExceptionTables <$> dparse2M "exception table"
 
 instance DParse ExceptionTable where
-  dparse' = undefined
+  dparse' =
+    ExceptionTable <$> u2 "start pointer" <*> u2 "end pointer" <*>
+    u2 "handler pointer" <*>
+    u2 "catch pointer"
 
---codeAttribute cp = do
---  stackLimit <- u2 "max stack"
---  localLimit <- u2 "max locals"
---  code <- dparse'
---  exceptionTables <- dparse'
---  attrs <- dparse'
---  return $
---    ACode
---      { stackLimit = stackLimit
---      , localLimit = localLimit
---      , code = code
---      , exceptionTables = exceptionTables
---      , cAttrs = attrs
---      }
-
-u1 :: Num a => String -> Parser a
+u1 :: (Ord e, Num a) => String -> Parser' e a
 u1 err = fromIntegral <$> anySingle <?> err
 
-u2 :: Num a => String -> Parser a
+u2 :: (Ord e, Num a) => String -> Parser' e a
 u2 err = fromIntegral . G.runGet G.getWord16be <$> takeP (Just err) 2
 
-u4 :: Num a => String -> Parser a
+u4 :: (Ord e, Num a) => String -> Parser' e a
 u4 err = fromIntegral . G.runGet G.getWord32be <$> takeP (Just err) 4
 
-u8 :: Num a => String -> Parser a
+u8 :: (Ord e, Num a) => String -> Parser' e a
 u8 err = fromIntegral . G.runGet G.getWord64be <$> takeP (Just err) 8
 
 nameIndex :: Parser Word16
