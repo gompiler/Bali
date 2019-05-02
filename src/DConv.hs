@@ -3,22 +3,23 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE RecordWildCards       #-}
 
 module DConv
   ( dconv
   ) where
 
 import           Base
-import           Control.Monad              (zipWithM)
-import           Control.Monad.Except       (throwError)
+import           Control.Monad        (zipWithM)
+import           Control.Monad.Except (throwError)
 import           D2Data
-import qualified Data.Binary.Get            as G
-import           Data.Function              ((&))
-import           DData                      (Index)
-import qualified DData                      as T
+import qualified Data.Binary.Get      as G
+import           Data.Function        ((&))
+import           DData                (Index)
+import qualified DData                as T
+import           DParse               (DParse (..), DParseError)
 import           Instructions
 import           Text.Megaparsec
-import qualified Text.Megaparsec.Byte.Lexer as L
 
 data ConvError
   = BadConstantPoolConversion Info
@@ -29,7 +30,7 @@ data ConvError
                           CpCategory
                           Index
                           ConstantPoolInfo
-  | ParseError (ParseErrorBundle ByteString ConvError)
+  | ParseError (ParseErrorBundle ByteString DParseError)
   | Generic String
   deriving (Eq)
 
@@ -61,17 +62,7 @@ instance Show ConvError where
 type DConv = Either ConvError
 
 dconv :: T.ClassFile -> DConv ClassFile
-dconv T.ClassFile { T.minorVersion
-                  , T.majorVersion
-                  , T.constantPool
-                  , T.accessFlags
-                  , T.thisClass
-                  , T.superClass
-                  , T.interfaces
-                  , T.fields
-                  , T.methods
-                  , T.attrs
-                  } = do
+dconv T.ClassFile {..} = do
   cp <- cpconv constantPool
   ClassFile <$-> minorVersion <*-> majorVersion <*-> cp <*-> accessFlags <*->
     thisClass <*->
@@ -81,14 +72,11 @@ dconv T.ClassFile { T.minorVersion
     conv cp methods <*>
     conv cp attrs
 
-class Parseable a where
-  parser :: ConstantPool -> Parser a
-
 class DConvertible a b where
   conv :: ConstantPool -> a -> DConv b
 
-instance Parseable a => DConvertible ByteString a where
-  conv cp = either (Left . ParseError) Right . parse (parser cp) ""
+instance DParse a => DConvertible ByteString a where
+  conv _ = either (Left . ParseError) Right . parse dparse' ""
 
 instance DConvertible T.Interfaces Interfaces where
   conv cp (T.Interfaces l) = Interfaces <$> mapM (conv cp) l
@@ -100,7 +88,7 @@ instance DConvertible T.Fields Fields where
   conv cp (T.Fields l) = Fields <$> mapM (conv cp) l
 
 instance DConvertible T.FieldInfo FieldInfo where
-  conv cp T.FieldInfo {T.fAccessFlags, T.fNameIndex, T.fDescIndex, T.fAttrs} = do
+  conv cp T.FieldInfo {..} = do
     fAttrs' <- conv cp fAttrs
     return
       FieldInfo
@@ -114,7 +102,7 @@ instance DConvertible T.Methods Methods where
   conv cp (T.Methods l) = Methods <$> mapM (conv cp) l
 
 instance DConvertible T.MethodInfo MethodInfo where
-  conv cp T.MethodInfo {T.mAccessFlags, T.mNameIndex, T.mDescIndex, T.mAttrs} = do
+  conv cp T.MethodInfo {..} = do
     mAttrs' <- conv cp mAttrs
     return
       MethodInfo
@@ -140,8 +128,8 @@ instance DConvertible T.AttributeInfo AttributeInfo where
             , cAttrs = Attributes []
             }
       _ -> return $ AConst s
---      "ConstantValue" -> getInfo cp (G.runGet G.getWord16be s) >>= undefined
 
+--      "ConstantValue" -> getInfo cp (G.runGet G.getWord16be s) >>= undefined
 data CpCategory
   = CpcClass
   | CpcFieldRef

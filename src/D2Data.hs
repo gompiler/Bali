@@ -99,6 +99,9 @@ data ConstantPoolInfo
                     RefInfo
   deriving (Show, Eq)
 
+data Constant = CString ByteString | CInteger Int32 | CFloat Float | CLong Int64 | CDouble Double
+  deriving (Show, Eq)
+
 type Interfaces = Interfaces' ByteString
 
 type Fields = Fields' FieldInfo

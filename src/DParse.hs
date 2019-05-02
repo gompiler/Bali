@@ -9,21 +9,26 @@ References:
 {-# LANGUAGE FlexibleInstances #-}
 
 module DParse
-  ( dparse
-  , DParser
+  ( DParser
   , Parser
+  , DParse(..)
+  , DParseError
+  , u1, u2, u4, u8
   , module DData
   ) where
 
 import           Base
-import           Control.Monad            (replicateM)
-import           Data.Binary              (encode)
-import qualified Data.Binary.Get          as G
-import           Data.ByteString.Internal (c2w, w2c)
-import           Data.ByteString.Lazy     (pack)
+import           Control.Monad              (replicateM)
+import           Data.Binary                (encode)
+import qualified Data.Binary.Get            as G
+import           Data.ByteString.Internal   (c2w, w2c)
+import           Data.ByteString.Lazy       (pack)
+import           Data.Int                   (Int32)
 import           DData
+import qualified D2Data as D2
 import           Instructions
 import           Text.Megaparsec
+import qualified Text.Megaparsec.Byte.Lexer as L
 
 --import           Text.Megaparsec.Byte
 type Parser = Parsec DParseError ByteString
@@ -155,20 +160,18 @@ instance DParse AttributeInfo where
     b <- takeP (Just "attribute info") c
     return $ AttributeInfo name b
 
---codeAttribute cp = do
---  stackLimit <- u2 "max stack"
---  localLimit <- u2 "max locals"
---  code <- dparse'
---  exceptionTables <- dparse'
---  attrs <- dparse'
---  return $
---    ACode
---      { stackLimit = stackLimit
---      , localLimit = localLimit
---      , code = code
---      , exceptionTables = exceptionTables
---      , cAttrs = attrs
---      }
+instance DParse Int32 where
+  dparse' = L.decimal
+
+instance DParse Integer where
+  dparse' = L.decimal
+
+instance DParse Float where
+  dparse' = L.float
+
+instance DParse Double where
+  dparse' = L.float
+
 instance DParse FieldDescriptor where
   dparse' = do
     tag <- anySingle
@@ -200,6 +203,21 @@ instance DParse ExceptionTables where
 
 instance DParse ExceptionTable where
   dparse' = undefined
+
+--codeAttribute cp = do
+--  stackLimit <- u2 "max stack"
+--  localLimit <- u2 "max locals"
+--  code <- dparse'
+--  exceptionTables <- dparse'
+--  attrs <- dparse'
+--  return $
+--    ACode
+--      { stackLimit = stackLimit
+--      , localLimit = localLimit
+--      , code = code
+--      , exceptionTables = exceptionTables
+--      , cAttrs = attrs
+--      }
 
 u1 :: Num a => String -> Parser a
 u1 err = fromIntegral <$> anySingle <?> err

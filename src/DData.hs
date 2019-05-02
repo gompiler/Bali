@@ -8,6 +8,7 @@ with regards to the indices.
 -}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns    #-}
+{-# LANGUAGE RecordWildCards    #-}
 
 module DData
   ( Index
@@ -185,7 +186,7 @@ data FieldInfo' attr = FieldInfo
   } deriving (Show, Eq)
 
 instance Functor FieldInfo' where
-  fmap f FieldInfo {fAccessFlags, fNameIndex, fDescIndex, fAttrs} =
+  fmap f FieldInfo {..} =
     FieldInfo
       { fAccessFlags = fAccessFlags
       , fNameIndex = fNameIndex
@@ -233,7 +234,7 @@ data MethodInfo' attr = MethodInfo
   } deriving (Show, Eq)
 
 instance Functor MethodInfo' where
-  fmap f MethodInfo {mAccessFlags, mNameIndex, mDescIndex, mAttrs} =
+  fmap f MethodInfo {..} =
     MethodInfo
       { mAccessFlags = mAccessFlags
       , mNameIndex = mNameIndex
