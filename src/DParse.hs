@@ -25,7 +25,6 @@ import           DData
 import           Instructions
 import           Text.Megaparsec
 
-
 --import           Text.Megaparsec.Byte
 type Parser = Parsec DParseError ByteString
 
@@ -129,16 +128,16 @@ instance DParse ConstantPoolInfo where
       ntIndex = u2 "name and type index"
 
 instance DParse Interfaces where
-  dparse' = dparseM (u2 "interfaces count") (u2 "interfaces")
+  dparse' = Interfaces <$> dparseM (u2 "interfaces count") (u2 "interfaces")
 
 instance DParse Fields where
-  dparse' = dparse2M "fields"
+  dparse' = Fields <$> dparse2M "fields"
 
 instance DParse FieldInfo where
   dparse' = FieldInfo <$> dparse' <*> nameIndex <*> descIndex <*> dparse'
 
 instance DParse Methods where
-  dparse' = dparse2M "methods"
+  dparse' = Methods <$> dparse2M "methods"
 
 instance DParse MethodInfo where
   dparse' = MethodInfo <$> dparse' <*> nameIndex <*> descIndex <*> dparse'
@@ -147,7 +146,7 @@ instance DParse AccessFlag where
   dparse' = AccessFlag <$> u2 "access flags"
 
 instance DParse Attributes where
-  dparse' = dparse2M "attributes"
+  dparse' = Attributes <$> dparse2M "attributes"
 
 instance DParse AttributeInfo where
   dparse' = do
@@ -197,7 +196,7 @@ instance DParse Instruction where
   dparse' = undefined
 
 instance DParse ExceptionTables where
-  dparse' = dparse2M "exception table"
+  dparse' = ExceptionTables <$> dparse2M "exception table"
 
 instance DParse ExceptionTable where
   dparse' = undefined

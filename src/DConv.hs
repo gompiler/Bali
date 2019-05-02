@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns        #-}
+{-# LANGUAGE OverloadedStrings     #-}
 
 module DConv
   ( dconv
@@ -11,6 +12,7 @@ import           Base
 import           Control.Monad              (zipWithM)
 import           Control.Monad.Except       (throwError)
 import           D2Data
+import qualified Data.Binary.Get            as G
 import           Data.Function              ((&))
 import           DData                      (Index)
 import qualified DData                      as T
@@ -27,7 +29,7 @@ data ConvError
                           CpCategory
                           Index
                           ConstantPoolInfo
-  | ParseError String
+  | ParseError (ParseErrorBundle ByteString ConvError)
   | Generic String
   deriving (Eq)
 
@@ -53,7 +55,7 @@ instance Show ConvError where
         "Bad constant pool info at index " ++
         show i ++
         ": expected " ++ show tag ++ " but got " ++ show info ++ "\n" ++ show cp
-      ParseError s -> s
+      ParseError s -> errorBundlePretty s
       Generic s -> "Generic error: " ++ s
 
 type DConv = Either ConvError
@@ -86,50 +88,60 @@ class DConvertible a b where
   conv :: ConstantPool -> a -> DConv b
 
 instance Parseable a => DConvertible ByteString a where
-  conv cp =
-    either (Left . ParseError . errorBundlePretty) Right . parse (parser cp) ""
+  conv cp = either (Left . ParseError) Right . parse (parser cp) ""
+
+instance DConvertible T.Interfaces Interfaces where
+  conv cp (T.Interfaces l) = Interfaces <$> mapM (conv cp) l
 
 instance DConvertible Index ByteString where
   conv = getInfo
 
-instance DConvertible a a where
-  conv _ = pure
-
-instance (Traversable t, DConvertible a b) => DConvertible (t a) (t b) where
-  conv = mapM . conv
+instance DConvertible T.Fields Fields where
+  conv cp (T.Fields l) = Fields <$> mapM (conv cp) l
 
 instance DConvertible T.FieldInfo FieldInfo where
-  conv _ _ =
+  conv cp T.FieldInfo {T.fAccessFlags, T.fNameIndex, T.fDescIndex, T.fAttrs} = do
+    fAttrs' <- conv cp fAttrs
     return
       FieldInfo
-        { fAccessFlags = AccessFlag 0
-        , fNameIndex = 0
-        , fDescIndex = 0
-        , fAttrs = []
+        { fAccessFlags = fAccessFlags
+        , fNameIndex = fNameIndex
+        , fDescIndex = fDescIndex
+        , fAttrs = fAttrs'
         }
+
+instance DConvertible T.Methods Methods where
+  conv cp (T.Methods l) = Methods <$> mapM (conv cp) l
 
 instance DConvertible T.MethodInfo MethodInfo where
-  conv _ _ =
+  conv cp T.MethodInfo {T.mAccessFlags, T.mNameIndex, T.mDescIndex, T.mAttrs} = do
+    mAttrs' <- conv cp mAttrs
     return
       MethodInfo
-        { mAccessFlags = AccessFlag 0
-        , mNameIndex = 0
-        , mDescIndex = 0
-        , mAttrs = []
+        { mAccessFlags = mAccessFlags
+        , mNameIndex = mNameIndex
+        , mDescIndex = mDescIndex
+        , mAttrs = mAttrs'
         }
+
+instance DConvertible T.Attributes Attributes where
+  conv cp (T.Attributes l) = Attributes <$> mapM (conv cp) l
 
 instance DConvertible T.AttributeInfo AttributeInfo where
-  conv cp (T.AttributeInfo index s) =
-    return
-      ACode
-        { stackLimit = 0
-        , localLimit = 0
-        , code = Instructions []
-        , exceptionTables = []
-        , cAttrs = []
-        }
+  conv cp (T.AttributeInfo i s) =
+    getInfo cp i >>= \case
+      "Code" ->
+        return
+          ACode
+            { stackLimit = 0
+            , localLimit = 0
+            , code = Instructions []
+            , exceptionTables = ExceptionTables []
+            , cAttrs = Attributes []
+            }
+      _ -> return $ AConst s
+--      "ConstantValue" -> getInfo cp (G.runGet G.getWord16be s) >>= undefined
 
-----
 data CpCategory
   = CpcClass
   | CpcFieldRef

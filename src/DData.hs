@@ -6,12 +6,8 @@ Note that this represents the first iteration, where we focus on parsing.
 All instances of indices are left as is, and no verification is made
 with regards to the indices.
 -}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GeneralisedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE TypeSynonymInstances       #-}
-{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE NamedFieldPuns    #-}
 
 module DData
   ( Index
@@ -23,23 +19,50 @@ module DData
   , ConstantPoolInfo(..)
   , CpMethodHandle(..)
   , Interfaces
+  , Interfaces'(..)
   , AccessFlag(..)
   , FieldDescriptor(..)
   , MethodDescriptor(..)
   , Fields
-  , FieldInfo(..)
+  , Fields'(..)
+  , FieldInfo
+  , FieldInfo'(..)
   , Methods
-  , MethodInfo(..)
+  , Methods'(..)
+  , MethodInfo
+  , MethodInfo'(..)
   , Attributes
+  , Attributes'(..)
   , AttributeInfo(..)
   , ExceptionTables
+  , ExceptionTables'(..)
   , ExceptionTable(..)
-  , showIndexed
   ) where
 
 import           Base
-import GHC.Int (Int32)
-import Data.Int (Int64)
+import           Control.Monad (liftM)
+import           Data.Int      (Int64)
+import           Data.List     (intercalate)
+import           GHC.Int       (Int32)
+import           Prelude       hiding (showList)
+
+showList :: Show a => Maybe Integer -> Maybe String -> [a] -> String
+showList startIndex tag items =
+  case tag of
+    Just t ->
+      t ++
+      if null items
+        then " []"
+        else "\n\t" ++ intercalate "\t\n" listString
+    _ -> intercalate "\n" listString
+  where
+    listString :: [String]
+    listString =
+      case startIndex of
+        Just i -> zipWith indexedItem [i ..] items
+        _      -> map show items
+    indexedItem :: Show a => Integer -> a -> String
+    indexedItem i v = show i ++ ": " ++ show v
 
 type Index = Word16
 
@@ -68,23 +91,14 @@ data ClassFile = ClassFile
   , attrs        :: Attributes
   } deriving (Show, Eq)
 
+type ConstantPool = ConstantPool' ConstantPoolInfo
+
 newtype ConstantPool' a =
   ConstantPool [a]
-  deriving (Eq, Ord, Monad, Applicative, Functor, Traversable, Foldable)
-
-showIndexed :: Show a => Integer -> String -> [a] -> String
-showIndexed startIndex tag items =
-  tag ++
-  if null items
-    then " []"
-    else "\n" ++ concatMap showItem (zip [startIndex ..] items)
-  where
-    showItem (i, v) = "\t" ++ show i ++ ": " ++ show v ++ "\n"
+  deriving (Eq, Ord)
 
 instance Show a => Show (ConstantPool' a) where
-  show (ConstantPool l) = showIndexed 1 "ConstantPool" l
-
-type ConstantPool = ConstantPool' ConstantPoolInfo
+  show (ConstantPool l) = showList (Just 1) (Just "ConstantPool") l
 
 -- | Constant pool info
 -- See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.4
@@ -145,16 +159,41 @@ newtype AccessFlag =
   AccessFlag Word16
   deriving (Show, Eq)
 
-type Interfaces = [Index]
+type Interfaces = Interfaces' Index
 
-type Fields = [FieldInfo]
+newtype Interfaces' l =
+  Interfaces [l]
+  deriving (Eq)
 
-data FieldInfo = FieldInfo
+instance Show a => Show (Interfaces' a) where
+  show (Interfaces l) = showList (Just 0) (Just "Interfaces") l
+
+type Fields = Fields' FieldInfo
+
+newtype Fields' l =
+  Fields [l]
+  deriving (Eq)
+
+instance Show a => Show (Fields' a) where
+  show (Fields l) = showList (Just 0) (Just "Fields") l
+
+data FieldInfo' attr = FieldInfo
   { fAccessFlags :: AccessFlag
   , fNameIndex   :: Word16
   , fDescIndex   :: Word16
-  , fAttrs       :: Attributes
+  , fAttrs       :: attr
   } deriving (Show, Eq)
+
+instance Functor FieldInfo' where
+  fmap f FieldInfo {fAccessFlags, fNameIndex, fDescIndex, fAttrs} =
+    FieldInfo
+      { fAccessFlags = fAccessFlags
+      , fNameIndex = fNameIndex
+      , fDescIndex = fDescIndex
+      , fAttrs = f fAttrs
+      }
+
+type FieldInfo = FieldInfo' Attributes
 
 -- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.3.2-200
 -- Aka type
@@ -177,23 +216,55 @@ data MethodDescriptor =
   MethodDescriptor [FieldDescriptor]
                    (Maybe FieldDescriptor)
 
-type Methods = [MethodInfo]
+type Methods = Methods' MethodInfo
 
-data MethodInfo = MethodInfo
+newtype Methods' l =
+  Methods [l]
+  deriving (Eq)
+
+instance Show a => Show (Methods' a) where
+  show (Methods l) = showList (Just 0) (Just "Methods") l
+
+data MethodInfo' attr = MethodInfo
   { mAccessFlags :: AccessFlag
   , mNameIndex   :: Word16
   , mDescIndex   :: Word16
-  , mAttrs       :: Attributes
+  , mAttrs       :: attr
   } deriving (Show, Eq)
 
-type Attributes = [AttributeInfo]
+instance Functor MethodInfo' where
+  fmap f MethodInfo {mAccessFlags, mNameIndex, mDescIndex, mAttrs} =
+    MethodInfo
+      { mAccessFlags = mAccessFlags
+      , mNameIndex = mNameIndex
+      , mDescIndex = mDescIndex
+      , mAttrs = f mAttrs
+      }
+
+type MethodInfo = MethodInfo' Attributes
+
+type Attributes = Attributes' AttributeInfo
+
+newtype Attributes' l =
+  Attributes [l]
+  deriving (Eq)
+
+instance Show a => Show (Attributes' a) where
+  show (Attributes l) = showList (Just 0) (Just "Attributes") l
 
 data AttributeInfo =
   AttributeInfo Index
                 ByteString
   deriving (Show, Eq)
 
-type ExceptionTables = [ExceptionTable]
+type ExceptionTables = ExceptionTables' ExceptionTable
+
+newtype ExceptionTables' l =
+  ExceptionTables [l]
+  deriving (Eq)
+
+instance Show a => Show (ExceptionTables' a) where
+  show (ExceptionTables l) = showList (Just 0) (Just "ExceptionTables") l
 
 data ExceptionTable = ExceptionTable
   { eStartPc   :: Word16

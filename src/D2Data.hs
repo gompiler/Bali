@@ -13,29 +13,39 @@ module D2Data
   , ConstantPoolInfo(..)
   , CpMethodHandle(..)
   , Interfaces
+  , Interfaces'(..)
   , AccessFlag(..)
   , FieldDescriptor(..)
   , MethodDescriptor(..)
   , Fields
-  , FieldInfo(..)
+  , Fields'(..)
+  , FieldInfo
+  , FieldInfo'(..)
   , Methods
-  , MethodInfo(..)
+  , Methods'(..)
+  , MethodInfo
+  , MethodInfo'(..)
   , Attributes
+  , Attributes'(..)
   , AttributeInfo(..)
   , ExceptionTables
+  , ExceptionTables'(..)
   , ExceptionTable(..)
   , RefInfo(..)
   ) where
 
 import           Base
-import           DData        (AccessFlag (..), ConstantPool' (..),
-                               CpMethodHandle (..), ExceptionTable (..),
-                               ExceptionTables, FieldAccess (..),
+import           Data.Int     (Int64)
+import           DData        (AccessFlag (..), Attributes' (..),
+                               ConstantPool' (..), CpMethodHandle (..),
+                               ExceptionTable (..), ExceptionTables,
+                               ExceptionTables' (..), FieldAccess (..),
                                FieldAccessInfo (..), FieldDescriptor (..),
-                               MethodDescriptor (..))
+                               FieldInfo' (..), Fields' (..), Interfaces' (..),
+                               MethodDescriptor (..), MethodInfo' (..),
+                               Methods' (..))
+import           GHC.Int      (Int32)
 import           Instructions
-import GHC.Int (Int32)
-import Data.Int (Int64)
 
 type TODO = ()
 
@@ -89,33 +99,23 @@ data ConstantPoolInfo
                     RefInfo
   deriving (Show, Eq)
 
-type Interfaces = [ByteString]
+type Interfaces = Interfaces' ByteString
 
-type Fields = [FieldInfo]
+type Fields = Fields' FieldInfo
 
-data FieldInfo = FieldInfo
-  { fAccessFlags :: AccessFlag
-  , fNameIndex   :: Word16
-  , fDescIndex   :: Word16
-  , fAttrs       :: Attributes
-  } deriving (Show, Eq)
+type FieldInfo = FieldInfo' Attributes
 
-type Methods = [MethodInfo]
+type Methods = Methods' MethodInfo
 
-data MethodInfo = MethodInfo
-  { mAccessFlags :: AccessFlag
-  , mNameIndex   :: Word16
-  , mDescIndex   :: Word16
-  , mAttrs       :: Attributes
-  } deriving (Show, Eq)
+type MethodInfo = MethodInfo' Attributes
 
-type Attributes = [AttributeInfo]
+type Attributes = Attributes' AttributeInfo
 
-data AttributeInfo = ACode
-  { stackLimit      :: Word16
-  , localLimit      :: Word16
-  , code            :: Instructions
-  , exceptionTables :: ExceptionTables
-  , cAttrs          :: Attributes
-  }
-  | AConst deriving (Show, Eq)
+data AttributeInfo
+  = ACode { stackLimit      :: Word16
+          , localLimit      :: Word16
+          , code            :: Instructions
+          , exceptionTables :: ExceptionTables
+          , cAttrs          :: Attributes }
+  | AConst ByteString
+  deriving (Show, Eq)
