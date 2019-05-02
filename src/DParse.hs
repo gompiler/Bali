@@ -196,10 +196,17 @@ instance DParse FieldDescriptor where
       semicolon = c2w ';'
 
 instance DParse Instructions where
-  dparse' = Instructions <$> dparse4M "code"
+  dparse' = do
+    c <- u4 "code count"
+    content <- takeP (Just "code block") c
+    let parser = many (dparse' :: Parser Instruction) <* eof
+    -- TODO see if there is a better way of handling nested instructions
+    instrs <-
+      either (customFailure . Generic . show) return $ parse parser "" content
+    return $ Instructions []
 
 instance DParse Instruction where
-  dparse' = Aaload <$ u1 "todo" -- todo
+  dparse' = Aaload <$ single 0x32 <|> Aaload <$ u1 "todo" -- todo
 
 instance DParse ExceptionTables where
   dparse' = ExceptionTables <$> dparse2M "exception table"
