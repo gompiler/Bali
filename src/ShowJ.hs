@@ -1,4 +1,6 @@
+{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 
 module ShowJ
   ( ShowJ(..)
@@ -8,7 +10,7 @@ module ShowJ
   ) where
 
 import           D2Data                     (AccessFlag (..), AccessInfo (..),
-                                             FieldAccess (..),
+                                             ClassFile (..), FieldAccess (..),
                                              FieldDescriptor (..))
 import           Data.ByteString.Builder
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -28,6 +30,10 @@ _sp = charUtf8 ' '
 _sc :: Builder
 _sc = charUtf8 ';'
 
+_tab :: Int -> Builder
+_tab 0        = mempty
+_tab tabCount = mconcat $ replicate (tabCount * tabSize) _sp
+
 stringJ :: ShowJ a => a -> String
 stringJ s = L.unpack $ toLazyByteString $ showJ s
 
@@ -44,11 +50,16 @@ class ShowJ a where
   showJ :: a -> Builder
   showJ = showJ' 0
   showJ' :: Int -> a -> Builder
-  showJ' 0 a        = showJ a
-  showJ' tabCount a = mconcat (replicate (tabCount * tabSize) _sp) <> showJ a
+  showJ' tabCount a = _tab tabCount <> showJ a
+
+instance ShowJ ClassFile where
+  showJ' tabCount ClassFile {..} =
+    _tab tabCount <> byteString ".version " <> word16Dec majorVersion <> _sp <>
+    word16Dec minorVersion
 
 instance ShowJ Instructions where
-  showJ' t (Instructions l) = mconcat $ intersperse _nl $ map (showJ' t) l
+  showJ' tabCount (Instructions l) =
+    mconcat $ intersperse _nl $ map (showJ' tabCount) l
 
 instance ShowJ IRIndex where
   showJ (IRIndex i) = word8Dec i

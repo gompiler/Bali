@@ -6,6 +6,7 @@ Note that this represents the first iteration, where we focus on parsing.
 All instances of indices are left as is, and no verification is made
 with regards to the indices.
 -}
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiWayIf        #-}
 {-# LANGUAGE NamedFieldPuns    #-}
@@ -109,6 +110,9 @@ data FieldAccess
   | FPackagePrivate
   deriving (Show, Eq)
 
+class HasAccessFlag a where
+  _getAccessFlag :: a -> AccessFlag
+
 -- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.1-200-E.1
 -- See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.5-200-A.1
 class AccessInfo a where
@@ -119,6 +123,27 @@ class AccessInfo a where
   isTransient :: a -> Bool
   isSynthetic :: a -> Bool
   isEnum :: a -> Bool
+  default fieldAccess :: HasAccessFlag a =>
+    a -> FieldAccess
+  fieldAccess = fieldAccess . _getAccessFlag
+  default isStatic :: HasAccessFlag a =>
+    a -> Bool
+  isStatic = isStatic . _getAccessFlag
+  default isFinal :: HasAccessFlag a =>
+    a -> Bool
+  isFinal = isFinal . _getAccessFlag
+  default isVolatile :: HasAccessFlag a =>
+    a -> Bool
+  isVolatile = isVolatile . _getAccessFlag
+  default isTransient :: HasAccessFlag a =>
+    a -> Bool
+  isTransient = isTransient . _getAccessFlag
+  default isSynthetic :: HasAccessFlag a =>
+    a -> Bool
+  isSynthetic = isSynthetic . _getAccessFlag
+  default isEnum :: HasAccessFlag a =>
+    a -> Bool
+  isEnum = isEnum . _getAccessFlag
 
 (.?.) :: Bits a => a -> a -> Bool
 a .?. b = a .&. b == b
@@ -245,6 +270,11 @@ data FieldInfo = FieldInfo
   , fAttrs       :: Attributes
   } deriving (Show, Eq)
 
+instance HasAccessFlag FieldInfo where
+  _getAccessFlag = fAccessFlags
+
+instance AccessInfo FieldInfo
+
 -- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.3.2-200
 -- Aka type
 data FieldDescriptor
@@ -281,6 +311,11 @@ data MethodInfo = MethodInfo
   , mDescIndex   :: DescIndex
   , mAttrs       :: Attributes
   } deriving (Show, Eq)
+
+instance HasAccessFlag MethodInfo where
+  _getAccessFlag = mAccessFlags
+
+instance AccessInfo MethodInfo
 
 type Attributes = Attributes' AttributeInfo
 
