@@ -44,8 +44,8 @@ module DData
   ) where
 
 import           Base
-import           Data.List     (intercalate)
-import           Prelude       hiding (showList)
+import           Data.List (intercalate)
+import           Prelude   hiding (showList)
 
 showList :: Show a => Maybe Integer -> Maybe String -> [a] -> String
 showList startIndex tag items =

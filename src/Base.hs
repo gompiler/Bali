@@ -11,14 +11,18 @@ module Base
   , Word16
   , Word32
   , Word64
-  , Int8, Int16, Int32, Int64
+  , Int8
+  , Int16
+  , Int32
+  , Int64
+  , ShowJ(..)
   ) where
 
 import           Control.Monad.Except (throwError)
 import           Data.ByteString.Lazy (ByteString)
 import           Data.Functor         (($>), (<&>))
-import           Data.Int            (Int16, Int32,Int64, Int8)
-import           Data.Word            (Word16, Word32,Word64, Word8)
+import           Data.Int             (Int16, Int32, Int64, Int8)
+import           Data.Word            (Word16, Word32, Word64, Word8)
 
 infixl 4 <$->, <*->, <$$>
 
@@ -41,3 +45,6 @@ f <*-> x = f <*> pure x
 mapS ::
      (Traversable t, Monad m, Monad f) => (a -> f (m b)) -> t a -> f (m (t b))
 mapS f x = sequence <$> mapM f x
+
+class ShowJ a where
+  showJ :: a -> String
