@@ -45,11 +45,13 @@ printJ' tabCount s = do
   hFlush stdout
   L.putStrLn $ toLazyByteString $ showJ' tabCount s
 
-showJlist' :: (ShowJ (f a), Foldable f) => Int -> f a -> Builder -> Builder
-showJlist' tabCount info suffix =
+-- | Given a list of items, show the prefix and the list if it is not empty
+-- or nothing otherwise
+showJlist' :: (ShowJ (f a), Foldable f) => Builder -> Int -> f a -> Builder
+showJlist' prefix tabCount info =
   if null info
     then mempty
-    else showJ' tabCount info <> suffix
+    else prefix <> showJ' tabCount info
 
 class ShowJ a where
   {-# MINIMAL showJ | showJ' #-}
@@ -75,10 +77,13 @@ instance ShowJ ClassFile where
     tab <>
     byteString ".super " <>
     showJ superClass <>
+    showJlist' (_nl <> _nl) tabCount interfaces <>
+    showJlist' (_nl <> _nl) tabCount fields <>
+    showJlist' (_nl <> _nl) tabCount methods <>
+    showJlist' (_nl <> _nl) tabCount attrs <>
     _nl <>
-    showJlist' tabCount interfaces _nl <>
     _nl <>
-    showJ' tabCount fields
+    byteString ".end class"
     where
       tab = _tab tabCount
 
@@ -119,9 +124,34 @@ instance ShowJ Fields where
     mconcat $ intersperse _nl $ map (showJ' tabCount) l
 
 instance ShowJ FieldInfo where
-  showJ FieldInfo {..} =
-    byteString ".field" <> showJ fAccessFlags <> _sp <> showJ fName <> _sp <>
-    showJ fDesc -- TODO add attributes
+  showJ' tabCount FieldInfo {..} =
+    _tab tabCount <> byteString ".field" <> showJ fAccessFlags <> _sp <>
+    showJ fName <>
+    _sp <>
+    showJ fDesc <>
+    showJlist' _nl (tabCount + 1) fAttrs
+
+instance ShowJ Methods where
+  showJ' tabCount (Methods l) =
+    mconcat $ intersperse _nl $ map (showJ' tabCount) l
+
+instance ShowJ MethodInfo where
+  showJ' tabCount MethodInfo {..} =
+    _tab tabCount <> byteString ".method" <> showJ mAccessFlags <> _sp <>
+    showJ mName <>
+    byteString " : " <>
+    showJ mDesc <>
+    showJlist' _nl (tabCount + 1) mAttrs
+
+instance ShowJ Attributes where
+  showJ' tabCount (Attributes l) =
+    mconcat $ intersperse _nl $ map (showJ' tabCount) l
+
+instance ShowJ AttributeInfo where
+  showJ attributeInfo =
+    case attributeInfo of
+      ACode {..} -> byteString ".code"
+      AConst _   -> byteString ".const"
 
 instance ShowJ Instructions where
   showJ' tabCount (Instructions l) =

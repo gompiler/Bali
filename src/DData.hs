@@ -327,7 +327,7 @@ type Attributes = Attributes' AttributeInfo
 
 newtype Attributes' l =
   Attributes [l]
-  deriving (Eq)
+  deriving (Eq, Foldable)
 
 instance Show a => Show (Attributes' a) where
   show (Attributes l) = showList (Just 0) (Just "Attributes") l
