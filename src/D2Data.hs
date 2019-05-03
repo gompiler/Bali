@@ -16,6 +16,7 @@ module D2Data
   , CpMethodHandle(..)
   , Interfaces
   , Interfaces'(..)
+  , InterfaceInfo(..)
   , AccessFlag(..)
   , FieldDescriptor(..)
   , MethodDescriptor(..)
@@ -56,8 +57,8 @@ data ClassFile = ClassFile
   , majorVersion :: Word16
   , constantPool :: ConstantPool
   , accessFlags  :: AccessFlag
-  , thisClass    :: Word16
-  , superClass   :: Word16
+  , thisClass    :: ByteString
+  , superClass   :: ByteString
   , interfaces   :: Interfaces
   , fields       :: Fields
   , methods      :: Methods
@@ -109,7 +110,10 @@ data Constant
   | CDouble Double
   deriving (Show, Eq)
 
-type Interfaces = Interfaces' ByteString
+type Interfaces = Interfaces' InterfaceInfo
+
+newtype InterfaceInfo = InterfaceInfo ByteString
+  deriving (Show, Eq)
 
 type Fields = Fields' FieldInfo
 

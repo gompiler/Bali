@@ -1,6 +1,8 @@
-{-# LANGUAGE NamedFieldPuns    #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE NamedFieldPuns       #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE RecordWildCards      #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module ShowJ
   ( ShowJ(..)
@@ -9,9 +11,7 @@ module ShowJ
   , stringJ
   ) where
 
-import           D2Data                     (AccessFlag (..), AccessInfo (..),
-                                             ClassFile (..), FieldAccess (..),
-                                             FieldDescriptor (..))
+import           D2Data
 import           Data.ByteString.Builder
 import qualified Data.ByteString.Lazy.Char8 as L
 import           Data.List                  (intersperse)
@@ -45,6 +45,12 @@ printJ' tabCount s = do
   hFlush stdout
   L.putStrLn $ toLazyByteString $ showJ' tabCount s
 
+showJlist' :: (ShowJ (f a), Foldable f) => Int -> f a -> Builder -> Builder
+showJlist' tabCount info suffix =
+  if null info
+    then mempty
+    else showJ' tabCount info <> suffix
+
 class ShowJ a where
   {-# MINIMAL showJ | showJ' #-}
   showJ :: a -> Builder
@@ -52,10 +58,70 @@ class ShowJ a where
   showJ' :: Int -> a -> Builder
   showJ' tabCount a = _tab tabCount <> showJ a
 
+instance ShowJ L.ByteString where
+  showJ = lazyByteString
+
 instance ShowJ ClassFile where
   showJ' tabCount ClassFile {..} =
-    _tab tabCount <> byteString ".version " <> word16Dec majorVersion <> _sp <>
-    word16Dec minorVersion
+    tab <> byteString ".version " <> word16Dec majorVersion <> _sp <>
+    word16Dec minorVersion <>
+    _nl <>
+    tab <>
+    byteString ".class" <>
+    showJ accessFlags <>
+    _sp <>
+    showJ thisClass <>
+    _nl <>
+    tab <>
+    byteString ".super " <>
+    showJ superClass <>
+    _nl <>
+    showJlist' tabCount interfaces _nl <>
+    _nl <>
+    showJ' tabCount fields
+    where
+      tab = _tab tabCount
+
+instance ShowJ AccessFlag
+  -- Attaches a space beforehand
+                                 where
+  showJ flag =
+    showJ (fieldAccess flag) <> optional "static" isStatic <>
+    optional "final" isFinal <>
+    optional "volatile" isVolatile <>
+    optional "transient" isTransient <>
+    optional "synthetic" isSynthetic <>
+    optional "enum" isEnum
+    where
+      optional :: L.ByteString -> (AccessFlag -> Bool) -> Builder
+      optional s f =
+        if f flag
+          then _sp <> showJ s
+          else mempty
+
+instance ShowJ FieldAccess where
+  showJ fa =
+    case fa of
+      FPublic         -> byteString " public"
+      FPrivate        -> byteString " private"
+      FProtected      -> byteString " protected"
+      FPackagePrivate -> mempty
+
+instance ShowJ Interfaces where
+  showJ' tabCount (Interfaces l) =
+    mconcat $ intersperse _nl $ map (showJ' tabCount) l
+
+instance ShowJ InterfaceInfo where
+  showJ (InterfaceInfo s) = byteString ".implements " <> showJ s
+
+instance ShowJ Fields where
+  showJ' tabCount (Fields l) =
+    mconcat $ intersperse _nl $ map (showJ' tabCount) l
+
+instance ShowJ FieldInfo where
+  showJ FieldInfo {..} =
+    byteString ".field" <> showJ fAccessFlags <> _sp <> showJ fName <> _sp <>
+    showJ fDesc -- TODO add attributes
 
 instance ShowJ Instructions where
   showJ' tabCount (Instructions l) =
@@ -101,7 +167,7 @@ instance ShowJ FieldDescriptor where
       TFloat   -> charUtf8 'F'
       TInt     -> charUtf8 'I'
       TLong    -> charUtf8 'J'
-      TRef s   -> charUtf8 'L' <> lazyByteString s <> _sc
+      TRef s   -> charUtf8 'L' <> showJ s <> _sc
       TShort   -> charUtf8 'S'
       TBool    -> charUtf8 'Z'
       TArray d -> charUtf8 '[' <> showJ d

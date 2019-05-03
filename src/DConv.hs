@@ -63,9 +63,9 @@ type DConv = Either ConvError
 dconv :: T.ClassFile -> DConv ClassFile
 dconv T.ClassFile {..} = do
   cp <- cpconv constantPool
-  ClassFile <$-> minorVersion <*-> majorVersion <*-> cp <*-> accessFlags <*->
-    thisClass <*->
-    superClass <*>
+  ClassFile <$-> minorVersion <*-> majorVersion <*-> cp <*-> accessFlags <*>
+    conv cp thisClass <*>
+    conv cp superClass <*>
     conv cp interfaces <*>
     conv cp fields <*>
     conv cp methods <*>
@@ -99,6 +99,9 @@ instance DConvertible T.StringIndex ByteString where
 
 instance DConvertible T.Interfaces Interfaces where
   conv cp (T.Interfaces l) = Interfaces <$> mapM (conv cp) l
+
+instance DConvertible T.InterfaceInfo InterfaceInfo where
+  conv cp (T.InterfaceInfo s) = InterfaceInfo <$> conv cp s
 
 instance DConvertible T.Fields Fields where
   conv cp (T.Fields l) = Fields <$> mapM (conv cp) l

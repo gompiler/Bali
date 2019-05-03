@@ -6,7 +6,6 @@ Note that values are stored using big-endian
 References:
 - https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.1
 -}
-
 {-# LANGUAGE FlexibleInstances #-}
 
 module DParse
@@ -75,8 +74,8 @@ instance DParse ClassFile where
     ClassFile <$ magic <*> num2 "minor version" <*> num2 "major version" <*>
     dparse' <*>
     dparse' <*>
-    num2 "this class" <*>
-    num2 "super class" <*>
+    (dparse' <?> "this class") <*>
+    (dparse' <?> "super class") <*>
     dparse' <*>
     dparse' <*>
     dparse' <*>
@@ -155,6 +154,9 @@ instance DParse RefIndex where
 
 instance DParse Interfaces where
   dparse' = Interfaces <$> dparse2M "interfaces"
+
+instance DParse InterfaceInfo where
+  dparse' = InterfaceInfo <$> dparse'
 
 instance DParse Fields where
   dparse' = Fields <$> dparse2M "fields"

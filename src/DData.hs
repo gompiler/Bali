@@ -7,6 +7,7 @@ All instances of indices are left as is, and no verification is made
 with regards to the indices.
 -}
 {-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE DeriveFoldable    #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiWayIf        #-}
 {-# LANGUAGE NamedFieldPuns    #-}
@@ -22,6 +23,7 @@ module DData
   , CpMethodHandle(..)
   , Interfaces
   , Interfaces'(..)
+  , InterfaceInfo(..)
   , AccessFlag(..)
   , FieldDescriptor(..)
   , MethodDescriptor(..)
@@ -166,8 +168,8 @@ data ClassFile = ClassFile
   , majorVersion :: Word16
   , constantPool :: ConstantPool
   , accessFlags  :: AccessFlag
-  , thisClass    :: Word16
-  , superClass   :: Word16
+  , thisClass    :: ClassIndex
+  , superClass   :: ClassIndex
   , interfaces   :: Interfaces
   , fields       :: Fields
   , methods      :: Methods
@@ -178,7 +180,7 @@ type ConstantPool = ConstantPool' ConstantPoolInfo
 
 newtype ConstantPool' a =
   ConstantPool [a]
-  deriving (Eq, Ord)
+  deriving (Eq, Foldable)
 
 instance Show a => Show (ConstantPool' a) where
   show (ConstantPool l) = showList (Just 1) (Just "ConstantPool") l
@@ -245,20 +247,24 @@ newtype AccessFlag =
 instance Show AccessFlag where
   show (AccessFlag f) = "AccessFlag " ++ hexString f
 
-type Interfaces = Interfaces' ClassIndex
+type Interfaces = Interfaces' InterfaceInfo
 
 newtype Interfaces' l =
   Interfaces [l]
-  deriving (Eq)
+  deriving (Eq, Foldable)
 
 instance Show a => Show (Interfaces' a) where
   show (Interfaces l) = showList (Just 0) (Just "Interfaces") l
+
+newtype InterfaceInfo =
+  InterfaceInfo ClassIndex
+  deriving (Show, Eq)
 
 type Fields = Fields' FieldInfo
 
 newtype Fields' l =
   Fields [l]
-  deriving (Eq)
+  deriving (Eq, Foldable)
 
 instance Show a => Show (Fields' a) where
   show (Fields l) = showList (Just 0) (Just "Fields") l
@@ -300,7 +306,7 @@ type Methods = Methods' MethodInfo
 
 newtype Methods' l =
   Methods [l]
-  deriving (Eq)
+  deriving (Eq, Foldable)
 
 instance Show a => Show (Methods' a) where
   show (Methods l) = showList (Just 0) (Just "Methods") l
@@ -335,7 +341,7 @@ type ExceptionTables = ExceptionTables' ExceptionTable
 
 newtype ExceptionTables' l =
   ExceptionTables [l]
-  deriving (Eq)
+  deriving (Eq, Foldable)
 
 instance Show a => Show (ExceptionTables' a) where
   show (ExceptionTables l) = showList (Just 0) (Just "ExceptionTables") l
