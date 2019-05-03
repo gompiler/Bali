@@ -39,9 +39,7 @@ module DData
 
 import           Base
 import           Control.Monad (liftM)
-import           Data.Int      (Int64)
 import           Data.List     (intercalate)
-import           GHC.Int       (Int32)
 import           Prelude       hiding (showList)
 
 showList :: Show a => Maybe Integer -> Maybe String -> [a] -> String
@@ -63,6 +61,12 @@ showList startIndex tag items =
     indexedItem i v = show i ++ ": " ++ show v
 
 type Index = Word16
+
+newtype NameIndex = NameIndex Word16
+  deriving (Show, Eq)
+
+newtype DescIndex = DescIndex Word16
+  deriving (Show, Eq)
 
 data FieldAccess
   = FPublic

@@ -137,8 +137,8 @@ instance DConvertible T.AttributeInfo AttributeInfo where
             }
         where attrCodeParser :: Parser ACodePart
               attrCodeParser = do
-                stackLimit <- u2 "max stack"
-                localLimit <- u2 "max locals"
+                stackLimit <- num2 "max stack"
+                localLimit <- num2 "max locals"
                 code <- dparse'
                 exceptionTables <- dparse'
                 attrs <- dparse'
