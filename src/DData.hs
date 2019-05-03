@@ -35,6 +35,12 @@ module DData
   , ExceptionTables
   , ExceptionTables'(..)
   , ExceptionTable(..)
+  , NameIndex(..)
+  , ClassIndex(..)
+  , DescIndex(..)
+  , NameAndTypeIndex(..)
+  , StringIndex(..)
+  , RefIndex(..)
   ) where
 
 import           Base
@@ -62,10 +68,37 @@ showList startIndex tag items =
 
 type Index = Word16
 
-newtype NameIndex = NameIndex Word16
+-- | Points to CONSTANT_Utf8_info
+newtype NameIndex =
+  NameIndex Word16
   deriving (Show, Eq)
 
-newtype DescIndex = DescIndex Word16
+-- | Points to CONSTANT_Class_info
+newtype ClassIndex =
+  ClassIndex Word16
+  deriving (Show, Eq)
+
+-- | Points to CONSTANT_NameAndType_info
+newtype NameAndTypeIndex =
+  NameAndTypeIndex Word16
+  deriving (Show, Eq)
+
+-- | Points to CONSTANT_Utf8_info
+newtype DescIndex =
+  DescIndex Word16
+  deriving (Show, Eq)
+
+-- | Points to CONSTANT_Utf8_info
+newtype StringIndex =
+  StringIndex Word16
+  deriving (Show, Eq)
+
+-- | Points to one of:
+-- * CONSTANT_Fieldref_info
+-- * CONSTANT_Methodref_info
+-- * CONSTANT_InterfaceMethodref_info
+newtype RefIndex =
+  RefIndex Word16
   deriving (Show, Eq)
 
 data FieldAccess
@@ -106,15 +139,15 @@ instance Show a => Show (ConstantPool' a) where
 -- See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.4
 data ConstantPoolInfo
   -- class_index
-  = CpClass Index
+  = CpClass ClassIndex
   -- class_index, name_and_type_index
-  | CpFieldRef Index
-               Index
-  | CpMethodRef Index
-                Index
-  | CpInterfaceMethodRef Index
-                         Index
-  | CpString Index
+  | CpFieldRef ClassIndex
+               NameAndTypeIndex
+  | CpMethodRef ClassIndex
+                NameAndTypeIndex
+  | CpInterfaceMethodRef ClassIndex
+                         NameAndTypeIndex
+  | CpString StringIndex
   -- bytes
   | CpInteger Int32
   | CpFloat Float
@@ -122,16 +155,16 @@ data ConstantPoolInfo
   | CpLong Int64
   | CpDouble Double
   -- name_index, descriptor_index
-  | CpNameAndType Index
-                  Index
+  | CpNameAndType NameIndex
+                  DescIndex
   | CpInfo ByteString
   | CpMethodHandle CpMethodHandle
-                   Index
+                   RefIndex
   -- descriptor_index
-  | CpMethodType Index
+  | CpMethodType DescIndex
   -- bootstrap_method_attr_index, name_and_type_index
   | CpInvokeDynamic Index
-                    Index
+                    NameAndTypeIndex
   deriving (Show, Eq)
 
 -- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-5.html#jvms-5.4.3.5
@@ -161,7 +194,7 @@ newtype AccessFlag =
   AccessFlag Word16
   deriving (Show, Eq)
 
-type Interfaces = Interfaces' Index
+type Interfaces = Interfaces' ClassIndex
 
 newtype Interfaces' l =
   Interfaces [l]
@@ -181,8 +214,8 @@ instance Show a => Show (Fields' a) where
 
 data FieldInfo = FieldInfo
   { fAccessFlags :: AccessFlag
-  , fNameIndex   :: Index
-  , fDescIndex   :: Index
+  , fNameIndex   :: NameIndex
+  , fDescIndex   :: DescIndex
   , fAttrs       :: Attributes
   } deriving (Show, Eq)
 
@@ -218,8 +251,8 @@ instance Show a => Show (Methods' a) where
 
 data MethodInfo = MethodInfo
   { mAccessFlags :: AccessFlag
-  , mNameIndex   :: Index
-  , mDescIndex   :: Index
+  , mNameIndex   :: NameIndex
+  , mDescIndex   :: DescIndex
   , mAttrs       :: Attributes
   } deriving (Show, Eq)
 

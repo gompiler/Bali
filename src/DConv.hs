@@ -80,11 +80,26 @@ instance DConvertible a a where
 instance DParse a => DConvertible ByteString a where
   conv _ = either (Left . ParseError) Right . parse dparse' ""
 
-instance DConvertible T.Interfaces Interfaces where
-  conv cp (T.Interfaces l) = Interfaces <$> mapM (conv cp) l
-
 instance DConvertible Index ByteString where
   conv = getInfo
+
+instance DConvertible T.ClassIndex ByteString where
+  conv cp (T.ClassIndex i) = getClass cp i
+
+instance DConvertible T.NameIndex ByteString where
+  conv cp (T.NameIndex i) = getInfo cp i
+
+instance DConvertible T.NameAndTypeIndex (ByteString, ByteString) where
+  conv cp (T.NameAndTypeIndex i) = getNameAndType cp i
+
+instance DConvertible T.DescIndex ByteString where
+  conv cp (T.DescIndex i) = getInfo cp i
+
+instance DConvertible T.StringIndex ByteString where
+  conv cp (T.StringIndex i) = getInfo cp i
+
+instance DConvertible T.Interfaces Interfaces where
+  conv cp (T.Interfaces l) = Interfaces <$> mapM (conv cp) l
 
 instance DConvertible T.Fields Fields where
   conv cp (T.Fields l) = Fields <$> mapM (conv cp) l

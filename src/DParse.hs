@@ -42,8 +42,8 @@ type Parser a = Parser' DParseError a
 type DParser = Parser ClassFile
 
 data DParseError
-  = InvalidConstantPoolTag Integer
-  | InvalidRefKind Integer
+  = InvalidConstantPoolTag Int8
+  | InvalidRefKind Int8
   | InvalidFieldDescriptor Char
   | InvalidArrayType Int8
   | InvalidOpCode Word8
@@ -103,27 +103,26 @@ instance DParse ConstantPool where
 instance DParse ConstantPoolInfo where
   dparse' = info =<< num1 "constant pool info"
     where
-      info :: Integer -> Parser ConstantPoolInfo
-      info 7 = CpClass <$> nameIndex
-      info 9 = CpFieldRef <$> classIndex <*> ntIndex
-      info 10 = CpMethodRef <$> classIndex <*> ntIndex
-      info 11 = CpInterfaceMethodRef <$> classIndex <*> ntIndex
-      info 8 = CpString <$> classIndex
+      info :: Int8 -> Parser ConstantPoolInfo
+      info 7 = CpClass <$> dparse'
+      info 9 = CpFieldRef <$> dparse' <*> dparse'
+      info 10 = CpMethodRef <$> dparse' <*> dparse'
+      info 11 = CpInterfaceMethodRef <$> dparse' <*> dparse'
+      info 8 = CpString <$> dparse'
       info 3 = CpInteger <$> num4 "integer"
       info 4 = CpFloat <$> num4 "float" -- TODO verify float conversion
       info 5 = CpLong <$> num8 "long"
       info 6 = CpDouble <$> num8 "double"
-      info 12 = CpNameAndType <$> nameIndex <*> descIndex
+      info 12 = CpNameAndType <$> dparse' <*> dparse'
       info 1 = do
         l <- num2 "length"
         b <- takeP (Just "string info") l
         return $ CpInfo b
       info 15 =
-        CpMethodHandle <$> (refKind =<< num1 "reference kind") <*>
-        num2 "reference index"
+        CpMethodHandle <$> (refKind =<< num1 "reference kind") <*> dparse'
           -- Note that the reference kind should actually be parsed first
         where
-          refKind :: Integer -> Parser CpMethodHandle
+          refKind :: Int8 -> Parser CpMethodHandle
           refKind kind =
             case kind of
               1 -> pure CpmGetField
@@ -136,27 +135,43 @@ instance DParse ConstantPoolInfo where
               8 -> pure CpmNewInvokeSpecial
               9 -> pure CpmInvokeInterface
               _ -> customFailure $ InvalidRefKind kind
-      info 16 = CpMethodType <$> descIndex
+      info 16 = CpMethodType <$> dparse'
       info 18 =
-        CpInvokeDynamic <$> num2 "bootstrap method attr index" <*> ntIndex
+        CpInvokeDynamic <$> num2 "bootstrap method attr index" <*> dparse'
       info i = customFailure $ InvalidConstantPoolTag i
-      classIndex = num2 "class index"
-      ntIndex = num2 "name and type index"
+
+instance DParse NameIndex where
+  dparse' = NameIndex <$> b2 "name index"
+
+instance DParse ClassIndex where
+  dparse' = ClassIndex <$> b2 "class index"
+
+instance DParse NameAndTypeIndex where
+  dparse' = NameAndTypeIndex <$> b2 "name and type index"
+
+instance DParse DescIndex where
+  dparse' = DescIndex <$> b2 "desc index"
+
+instance DParse StringIndex where
+  dparse' = StringIndex <$> b2 "string index"
+
+instance DParse RefIndex where
+  dparse' = RefIndex <$> b2 "reference index"
 
 instance DParse Interfaces where
-  dparse' = Interfaces <$> dparseM (num2 "interfaces count") (num2 "interfaces")
+  dparse' = Interfaces <$> dparse2M "interfaces"
 
 instance DParse Fields where
   dparse' = Fields <$> dparse2M "fields"
 
 instance DParse FieldInfo where
-  dparse' = FieldInfo <$> dparse' <*> nameIndex <*> descIndex <*> dparse'
+  dparse' = FieldInfo <$> dparse' <*> dparse' <*> dparse' <*> dparse'
 
 instance DParse Methods where
   dparse' = Methods <$> dparse2M "methods"
 
 instance DParse MethodInfo where
-  dparse' = MethodInfo <$> dparse' <*> nameIndex <*> descIndex <*> dparse'
+  dparse' = MethodInfo <$> dparse' <*> dparse' <*> dparse' <*> dparse'
 
 instance DParse AccessFlag where
   dparse' = AccessFlag <$> num2 "access flags"
@@ -485,9 +500,3 @@ num4 err = fromIntegral <$> b4 err
 
 num8 :: (Ord e, Num a) => String -> Parser' e a
 num8 err = fromIntegral <$> b8 err
-
-nameIndex :: Parser Word16
-nameIndex = num2 "name index"
-
-descIndex :: Parser Word16
-descIndex = num2 "descriptor index"
