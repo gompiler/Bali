@@ -5,6 +5,7 @@ module Base
   , (<*->)
   , (<$->)
   , mapS
+  , hexString
   , throwError
   , ByteString
   , Word8
@@ -22,6 +23,7 @@ import           Data.ByteString.Lazy (ByteString)
 import           Data.Functor         (($>), (<&>))
 import           Data.Int             (Int16, Int32, Int64, Int8)
 import           Data.Word            (Word16, Word32, Word64, Word8)
+import           Numeric              (showHex)
 
 infixl 4 <$->, <*->, <$$>
 
@@ -44,3 +46,6 @@ f <*-> x = f <*> pure x
 mapS ::
      (Traversable t, Monad m, Monad f) => (a -> f (m b)) -> t a -> f (m (t b))
 mapS f x = sequence <$> mapM f x
+
+hexString :: (Integral a, Show a) => a -> String
+hexString n = "0x" ++ showHex n ""

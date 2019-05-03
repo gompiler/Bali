@@ -29,11 +29,9 @@ import           Data.ByteString.Internal   (c2w, w2c)
 import           Data.ByteString.Lazy       (pack)
 import           DData
 import           Instructions
-import           Numeric                    (showHex)
 import           Text.Megaparsec
 import qualified Text.Megaparsec.Byte.Lexer as L
 
---import           Text.Megaparsec.Byte
 type Parser' e a = Parsec e ByteString a
 
 type Parser a = Parser' DParseError a
@@ -56,7 +54,7 @@ instance ShowErrorComponent DParseError where
       InvalidRefKind i         -> "Invalid reference kind " ++ show i
       InvalidFieldDescriptor c -> "Invalid field descriptor " ++ show c
       InvalidArrayType i       -> "Invalid array type " ++ show i
-      InvalidOpCode i          -> "Invalid op code " ++ showHex i "0x"
+      InvalidOpCode i          -> "Invalid op code " ++ hexString i
       Generic s                -> s
 
 class DParse a where

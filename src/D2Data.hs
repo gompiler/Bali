@@ -8,7 +8,7 @@ See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html
 
 module D2Data
   ( FieldAccess(..)
-  , FieldAccessInfo(..)
+  , AccessInfo(..)
   , ClassFile(..)
   , ConstantPool
   , ConstantPool'(..)
@@ -43,7 +43,7 @@ import           DData        (AccessFlag (..), Attributes' (..),
                                ConstantPool' (..), CpMethodHandle (..),
                                ExceptionTable (..), ExceptionTables,
                                ExceptionTables' (..), FieldAccess (..),
-                               FieldAccessInfo (..), FieldDescriptor (..),
+                               AccessInfo (..), FieldDescriptor (..),
                                Fields' (..), Interfaces' (..),
                                MethodDescriptor (..), Methods' (..))
 import           GHC.Int      (Int32)

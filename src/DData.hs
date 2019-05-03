@@ -7,12 +7,13 @@ All instances of indices are left as is, and no verification is made
 with regards to the indices.
 -}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiWayIf        #-}
 {-# LANGUAGE NamedFieldPuns    #-}
 
 module DData
   ( Index
   , FieldAccess(..)
-  , FieldAccessInfo(..)
+  , AccessInfo(..)
   , ClassFile(..)
   , ConstantPool
   , ConstantPool'(..)
@@ -44,6 +45,7 @@ module DData
   ) where
 
 import           Base
+import           Data.Bits (Bits, (.&.))
 import           Data.List (intercalate)
 import           Prelude   hiding (showList)
 
@@ -105,12 +107,34 @@ data FieldAccess
   | FPrivate
   | FProtected
   | FPackagePrivate
-  deriving (Eq)
+  deriving (Show, Eq)
 
-class FieldAccessInfo a where
+-- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.1-200-E.1
+-- See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.5-200-A.1
+class AccessInfo a where
   fieldAccess :: a -> FieldAccess
   isStatic :: a -> Bool
   isFinal :: a -> Bool
+  isVolatile :: a -> Bool
+  isTransient :: a -> Bool
+  isSynthetic :: a -> Bool
+  isEnum :: a -> Bool
+
+(.?.) :: Bits a => a -> a -> Bool
+a .?. b = a .&. b == b
+
+instance AccessInfo AccessFlag where
+  fieldAccess (AccessFlag af) =
+    if | af .?. 0x0001 -> FPublic
+       | af .?. 0x0002 -> FPrivate
+       | af .?. 0x0004 -> FProtected
+       | otherwise -> FPackagePrivate
+  isStatic (AccessFlag af) = af .?. 0x0008
+  isFinal (AccessFlag af) = af .?. 0x0010
+  isVolatile (AccessFlag af) = af .?. 0x0040
+  isTransient (AccessFlag af) = af .?. 0x0080
+  isSynthetic (AccessFlag af) = af .?. 0x1000
+  isEnum (AccessFlag af) = af .?. 0x4000
 
 data ClassFile = ClassFile
   { minorVersion :: Word16

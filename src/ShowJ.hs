@@ -7,10 +7,12 @@ module ShowJ
   , stringJ
   ) where
 
+import           D2Data                     (AccessFlag (..), AccessInfo (..),
+                                             FieldAccess (..),
+                                             FieldDescriptor (..))
 import           Data.ByteString.Builder
 import qualified Data.ByteString.Lazy.Char8 as L
 import           Data.List                  (intersperse)
-import           DData                      (FieldDescriptor (..))
 import           Instructions
 import           System.IO
 
