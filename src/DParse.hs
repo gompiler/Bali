@@ -6,10 +6,8 @@ Note that values are stored using big-endian
 References:
 - https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.1
 -}
-{-# LANGUAGE ConstraintKinds   #-}
+
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeFamilies      #-}
-{-# LANGUAGE TypeOperators     #-}
 
 module DParse
   ( DParser

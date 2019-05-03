@@ -105,6 +105,12 @@ class Instruction:
                     builder = builder + 'undefined {{- {} -}}'.format(a)
         return '0x{} -> {}'.format(self.op_code, builder)
 
+    def haskell_showj(self):
+        s = '{} -> byteString "{}"'.format(self.haskell_name, self.name)
+        if self.args:
+            s = s + " -- todo; {} args".format(len(self.args))
+        return s
+
 
 soup = get_contents()
 
@@ -135,4 +141,9 @@ def print_parser():
         print(instr.haskell_parser())
 
 
-print_parser()
+def print_showj():
+    for instr in instructions:
+        print(instr.haskell_showj())
+
+
+print_showj()

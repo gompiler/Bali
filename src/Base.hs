@@ -15,7 +15,6 @@ module Base
   , Int16
   , Int32
   , Int64
-  , ShowJ(..)
   ) where
 
 import           Control.Monad.Except (throwError)
@@ -45,6 +44,3 @@ f <*-> x = f <*> pure x
 mapS ::
      (Traversable t, Monad m, Monad f) => (a -> f (m b)) -> t a -> f (m (t b))
 mapS f x = sequence <$> mapM f x
-
-class ShowJ a where
-  showJ :: a -> String
