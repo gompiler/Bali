@@ -23,7 +23,7 @@ module DParse
   ) where
 
 import           Base
-import           Control.Monad              (replicateM, void)
+import           Control.Monad              (replicateM)
 import qualified D2Data                     as D2
 import           Data.Binary                (encode)
 import qualified Data.Binary.Get            as G
@@ -57,6 +57,7 @@ instance ShowErrorComponent DParseError where
       InvalidConstantPoolTag i -> "Invalid constant pool tag " ++ show i
       InvalidRefKind i         -> "Invalid reference kind " ++ show i
       InvalidFieldDescriptor c -> "Invalid field descriptor " ++ show c
+      InvalidArrayType i       -> "Invalid array type " ++ show i
       InvalidOpCode i          -> "Invalid op code " ++ showHex i "0x"
       Generic s                -> s
 
@@ -72,9 +73,6 @@ dparseM counter parser = do
 
 dparse2M :: DParse a => String -> Parser [a]
 dparse2M tag = dparseM (num2 $ tag ++ " count") dparse'
-
-dparse4M :: DParse a => String -> Parser [a]
-dparse4M tag = dparseM (num4 $ tag ++ " count") dparse'
 
 instance DParse ClassFile where
   dparse' =
@@ -468,6 +466,7 @@ instance DParse Instruction where
           0x56 -> pure Sastore
           0x11 -> Sipush <$> dparse'
           0x5f -> pure Swap
+          _    -> customFailure $ InvalidOpCode op
 
 instance DParse ExceptionTables where
   dparse' = ExceptionTables <$> dparse2M "exception table"

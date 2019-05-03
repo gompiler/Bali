@@ -199,11 +199,9 @@ type Info = ConstantPool' ConvInfo
 
 type ConvStage = Info -> ConvInfo -> DConv ConvInfo
 
-type GetInfo' c a = ConstantPool' c -> Index -> DConv a
+type GetInfo c a = ConstantPool' c -> Index -> DConv a
 
-type GetInfo a = GetInfo' ConstantPoolInfo a
-
-type GetConvInfo a = GetInfo' ConvInfo a
+type GetConvInfo a = GetInfo ConvInfo a
 
 -- | Helper functions to access constant pools
 -- Note that regardless of the original pool, accessors are done with the non indexed info variants
@@ -213,47 +211,47 @@ class ConstantPoolGet c where
   cpThrowError :: ConstantPool' c -> CpCategory -> Index -> c -> DConv a
   cpThrowError cp tag i cpi = throwError $ _cpThrow cp tag i cpi
   _cpMap :: c -> Maybe ConstantPoolInfo
-  get :: CpCategory -> (ConstantPoolInfo -> Maybe a) -> GetInfo' c a
+  get :: CpCategory -> (ConstantPoolInfo -> Maybe a) -> GetInfo c a
   get tag f cp'@(ConstantPool cp) index =
     let cpi = cp !! (fromIntegral index - 1)
         err = cpThrowError cp' tag index cpi
      in maybe err return $ f =<< _cpMap cpi
-  getInfo :: GetInfo' c ByteString
+  getInfo :: GetInfo c ByteString
   getInfo =
     get
       CpcInfo
       (\case
          CpInfo s -> Just s
          _ -> Nothing)
-  getClass :: GetInfo' c ByteString
+  getClass :: GetInfo c ByteString
   getClass =
     get
       CpcClass
       (\case
          CpClass s -> Just s
          _ -> Nothing)
-  getNameAndType :: GetInfo' c (ByteString, ByteString)
+  getNameAndType :: GetInfo c (ByteString, ByteString)
   getNameAndType =
     get
       CpcNameAndType
       (\case
          CpNameAndType n d -> Just (n, d)
          _ -> Nothing)
-  getFieldRef :: GetInfo' c RefInfo
+  getFieldRef :: GetInfo c RefInfo
   getFieldRef =
     get
       CpcFieldRef
       (\case
          CpFieldRef ref -> Just ref
          _ -> Nothing)
-  getMethodRef :: GetInfo' c RefInfo
+  getMethodRef :: GetInfo c RefInfo
   getMethodRef =
     get
       CpcMethodRef
       (\case
          CpMethodRef ref -> Just ref
          _ -> Nothing)
-  getInterfaceMethodRef :: GetInfo' c RefInfo
+  getInterfaceMethodRef :: GetInfo c RefInfo
   getInterfaceMethodRef =
     get
       CpcInterfaceMethodRef

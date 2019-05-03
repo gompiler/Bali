@@ -44,7 +44,6 @@ module DData
   ) where
 
 import           Base
-import           Control.Monad (liftM)
 import           Data.List     (intercalate)
 import           Prelude       hiding (showList)
 
