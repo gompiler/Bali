@@ -215,7 +215,10 @@ data CpMethodHandle
 -- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.2
 newtype AccessFlag =
   AccessFlag Word16
-  deriving (Show, Eq)
+  deriving (Eq)
+
+instance Show AccessFlag where
+  show (AccessFlag f) = "AccessFlag " ++ hexString f
 
 type Interfaces = Interfaces' ClassIndex
 
