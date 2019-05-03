@@ -15,7 +15,7 @@ import           D2Data
 import           Data.ByteString.Builder
 import qualified Data.ByteString.Lazy.Char8 as L
 import           Data.List                  (intersperse)
-import           Instructions
+import           IRData
 import           System.IO
 
 tabSize :: Int
@@ -53,6 +53,9 @@ showJlist' prefix tabCount info =
     then mempty
     else prefix <> showJ' tabCount info
 
+-- | Bytecode show implementation using efficient ByteString builders
+-- showJ is the default builder without any tab prefixes
+-- showJ' will take tab prefixes into account
 class ShowJ a where
   {-# MINIMAL showJ | showJ' #-}
   showJ :: a -> Builder
@@ -148,14 +151,21 @@ instance ShowJ Attributes where
     mconcat $ intersperse _nl $ map (showJ' tabCount) l
 
 instance ShowJ AttributeInfo where
-  showJ attributeInfo =
+  showJ' tabCount attributeInfo =
+    _tab tabCount <>
     case attributeInfo of
-      ACode {..} -> byteString ".code"
-      AConst _   -> byteString ".const"
+      ACode {..} ->
+        byteString ".code stack " <> showJ stackLimit <> byteString " locals " <>
+        showJ localLimit <>
+        showJlist' _nl (tabCount + 1) code <> -- TODO add exception tables
+        showJlist' (_nl <> _nl) (tabCount + 1) cAttrs
+      AConst _ -> byteString ".const"
 
-instance ShowJ Instructions where
-  showJ' tabCount (Instructions l) =
-    mconcat $ intersperse _nl $ map (showJ' tabCount) l
+instance ShowJ StackLimit where
+  showJ (StackLimit i) = word16Dec i
+
+instance ShowJ LocalLimit where
+  showJ (LocalLimit i) = word16Dec i
 
 instance ShowJ IRIndex where
   showJ (IRIndex i) = word8Dec i
@@ -201,6 +211,10 @@ instance ShowJ FieldDescriptor where
       TShort   -> charUtf8 'S'
       TBool    -> charUtf8 'Z'
       TArray d -> charUtf8 '[' <> showJ d
+
+instance ShowJ Instructions where
+  showJ' tabCount (Instructions l) =
+    mconcat $ intersperse _nl $ map (showJ' tabCount) l
 
 instance ShowJ Instruction where
   showJ inst =

@@ -4,7 +4,7 @@ module ShowJSpec
 
 import           Data.List    (intercalate)
 import           Disassembler
-import           Instructions
+import           IRData
 import           ShowJ
 import           TestBase
 

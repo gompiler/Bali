@@ -27,7 +27,7 @@ import qualified Data.Binary.Get            as G
 import           Data.ByteString.Internal   (c2w, w2c)
 import           Data.ByteString.Lazy       (pack)
 import           DData
-import           Instructions
+import           IRData
 import           Text.Megaparsec
 import qualified Text.Megaparsec.Byte.Lexer as L
 

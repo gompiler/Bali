@@ -18,7 +18,7 @@ import           Data.Function        ((&))
 import           DData                (Index)
 import qualified DData                as T
 import           DParse
-import           Instructions
+import           IRData
 import           Text.Megaparsec
 
 data ConvError

@@ -48,7 +48,7 @@ import           DData        (AccessFlag (..), Attributes' (..),
                                Fields' (..), Interfaces' (..),
                                MethodDescriptor (..), Methods' (..))
 import           GHC.Int      (Int32)
-import           Instructions
+import           IRData
 
 type TODO = ()
 
