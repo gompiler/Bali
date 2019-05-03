@@ -24,6 +24,7 @@ module DParse
 
 import           Base
 import           Control.Monad              (replicateM, void)
+import qualified D2Data                     as D2
 import           Data.Binary                (encode)
 import qualified Data.Binary.Get            as G
 import           Data.ByteString.Internal   (c2w, w2c)
@@ -476,6 +477,12 @@ instance DParse ExceptionTable where
     ExceptionTable <$> num2 "start pointer" <*> num2 "end pointer" <*>
     num2 "handler pointer" <*>
     num2 "catch pointer"
+
+instance DParse D2.StackLimit where
+  dparse' = D2.StackLimit <$> b2 "max stack"
+
+instance DParse D2.LocalLimit where
+  dparse' = D2.LocalLimit <$> b2 "max local"
 
 b1 :: (Ord e) => String -> Parser' e Word8
 b1 err = anySingle <?> err

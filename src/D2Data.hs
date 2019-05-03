@@ -33,6 +33,8 @@ module D2Data
   , ExceptionTables'(..)
   , ExceptionTable(..)
   , RefInfo(..)
+  , StackLimit(..)
+  , LocalLimit(..)
   ) where
 
 import           Base
@@ -135,9 +137,17 @@ data AttributeInfoKind
   = ACode'
   | AConst'
 
+newtype StackLimit =
+  StackLimit Word16
+  deriving (Show, Eq)
+
+newtype LocalLimit =
+  LocalLimit Word16
+  deriving (Show, Eq)
+
 data AttributeInfo
-  = ACode { stackLimit      :: Word16
-          , localLimit      :: Word16
+  = ACode { stackLimit      :: StackLimit
+          , localLimit      :: LocalLimit
           , code            :: Instructions
           , exceptionTables :: ExceptionTables
           , cAttrs          :: Attributes }

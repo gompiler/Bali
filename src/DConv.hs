@@ -77,9 +77,8 @@ class DConvertible a b where
 instance DConvertible a a where
   conv _ = pure
 
-instance DParse a => DConvertible ByteString a where
-  conv _ = either (Left . ParseError) Right . parse dparse' ""
-
+--instance DParse a => DConvertible ByteString a where
+--  conv _ = either (Left . ParseError) Right . parse dparse' ""
 instance DConvertible Index ByteString where
   conv = getInfo
 
@@ -152,8 +151,8 @@ instance DConvertible T.AttributeInfo AttributeInfo where
             }
         where attrCodeParser :: Parser ACodePart
               attrCodeParser = do
-                stackLimit <- num2 "max stack"
-                localLimit <- num2 "max locals"
+                stackLimit <- dparse'
+                localLimit <- dparse'
                 code <- dparse'
                 exceptionTables <- dparse'
                 attrs <- dparse'
@@ -166,14 +165,18 @@ instance DConvertible T.AttributeInfo AttributeInfo where
                     , pAttributes = attrs
                     }
       "ConstantValue" -> AConst <$> getInfo cp (G.runGet G.getWord16be s)
-      _ -> return $ AConst s
+      tag -> return $ AConst tag
     where
       convParse :: Parser a -> DConv a
       convParse parser = either (Left . ParseError) Right $ parse parser "" s
 
+-- | Given that the code attribute contains nested attributes,
+-- We must convert the first layer using the constant pool,
+-- then parse the following layer before we can convert again.
+-- This data type serves as an intermediate state
 data ACodePart = ACodePart
-  { pStackLimit      :: Word16
-  , pLocalLimit      :: Word16
+  { pStackLimit      :: StackLimit
+  , pLocalLimit      :: LocalLimit
   , pCode            :: Instructions
   , pExceptionTables :: ExceptionTables
   , pAttributes      :: T.Attributes
@@ -305,10 +308,11 @@ cpconv cp =
     convInfo :: ConvStage
     convInfo info (Left cpi) =
       case cpi of
-        T.CpClass i -> Right . CpClass <$> getInfo info i
-        T.CpString i -> Right . CpString <$> getInfo info i
-        T.CpMethodType i -> Right . CpMethodType <$> getInfo info i
-        T.CpNameAndType name desc ->
+        T.CpClass (T.ClassIndex i) -> Right . CpClass <$> getInfo info i
+        T.CpString (T.StringIndex i) -> Right . CpString <$> getInfo info i
+        T.CpMethodType (T.DescIndex i) ->
+          Right . CpMethodType <$> getInfo info i
+        T.CpNameAndType (T.NameIndex name) (T.DescIndex desc) ->
           Right <$> (CpNameAndType <$> getInfo info name <*> getInfo info desc)
         _ -> return $ Left cpi
     convInfo _ cpi = return cpi
@@ -316,9 +320,11 @@ cpconv cp =
     convNameAndType :: ConvStage
     convNameAndType info (Left cpi) =
       case cpi of
-        T.CpFieldRef i1 i2 -> Right . CpFieldRef <$> convRef i1 i2
-        T.CpMethodRef i1 i2 -> Right . CpMethodRef <$> convRef i1 i2
-        T.CpInterfaceMethodRef i1 i2 ->
+        T.CpFieldRef (T.ClassIndex i1) (T.NameAndTypeIndex i2) ->
+          Right . CpFieldRef <$> convRef i1 i2
+        T.CpMethodRef (T.ClassIndex i1) (T.NameAndTypeIndex i2) ->
+          Right . CpMethodRef <$> convRef i1 i2
+        T.CpInterfaceMethodRef (T.ClassIndex i1) (T.NameAndTypeIndex i2) ->
           Right . CpInterfaceMethodRef <$> convRef i1 i2
         _ -> return $ Left cpi
       where
@@ -331,7 +337,7 @@ cpconv cp =
     convNameAndType _ cpi = return cpi
     -- | Stage 3: Extract method handle
     convMethodHandle :: ConvStage
-    convMethodHandle info (Left (T.CpMethodHandle mh i)) =
+    convMethodHandle info (Left (T.CpMethodHandle mh (T.RefIndex i))) =
       Right . CpMethodHandle mh <$> handleRef info i
       where
         handleRef :: GetConvInfo RefInfo
