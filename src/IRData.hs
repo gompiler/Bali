@@ -2,7 +2,7 @@
 Instruction set for jvm operations
 See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-6.html#jvms-6.5
 -}
-{-# LANGUAGE DeriveFoldable       #-}
+{-# LANGUAGE DeriveFoldable #-}
 
 module IRData where
 
@@ -228,8 +228,7 @@ data Instruction' index indexw label labelw intByte intShort arrayType
   deriving (Show, Eq)
 
 convInstr ::
-     ( MonadError e m
-     , Convertible c e index index'
+     ( Convertible c e index index'
      , Convertible c e indexw indexw'
      , Convertible c e label label'
      , Convertible c e labelw labelw'
@@ -239,205 +238,206 @@ convInstr ::
      )
   => c
   -> Instruction' index indexw label labelw intByte intShort arrayType
-  -> m (Instruction' index' indexw' label' labelw' intByte' intShort' arrayType')
-convInstr c instruction = case instruction of
-  Aaload -> pure Aaload
-  Aastore -> pure Aastore
-  AconstNull -> pure AconstNull
-  Aload i -> Aload <$> convert c i
-  Aload0 -> pure Aload0
-  Aload1 -> pure Aload1
-  Aload2 -> pure Aload2
-  Aload3 -> pure Aload3
-  Anewarray i  -> Anewarray <$> convert c i
-  Areturn -> pure Areturn
-  Arraylength -> pure Arraylength
-  Astore i  -> Astore <$> convert c i
-  Astore0 -> pure Astore0
-  Astore1 -> pure Astore1
-  Astore2 -> pure Astore2
-  Astore3 -> pure Astore3
-  Athrow -> pure Athrow
-  Baload -> pure Baload
-  Bastore -> pure Bastore
-  Bipush ib -> Bipush <$> convert c ib
-  Breakpoint -> pure Breakpoint
-  Caload -> pure Caload
-  Castore -> pure Castore
-  Checkcast  i -> Checkcast <$> convert c i
-  D2f -> pure D2f
-  D2i -> pure D2i
-  D2l -> pure D2l
-  Dadd -> pure Dadd
-  Daload -> pure Daload
-  Dastore -> pure Dastore
-  Dcmpg -> pure Dcmpg
-  Dcmpl -> pure Dcmpl
-  Dconst0 -> pure Dconst0
-  Dconst1 -> pure Dconst1
-  Ddiv -> pure Ddiv
-  Dload  i -> Dload <$> convert c i
-  Dload0 -> pure Dload0
-  Dload1 -> pure Dload1
-  Dload2 -> pure Dload2
-  Dload3 -> pure Dload3
-  Dmul -> pure Dmul
-  Dneg -> pure Dneg
-  Drem -> pure Drem
-  Dreturn -> pure Dreturn
-  Dstore  i -> Dstore <$> convert c i
-  Dstore0 -> pure Dstore0
-  Dstore1 -> pure Dstore1
-  Dstore2 -> pure Dstore2
-  Dstore3 -> pure Dstore3
-  Dsub -> pure Dsub
-  Dup -> pure Dup
-  Dup2 -> pure Dup2
-  Dup2X1 -> pure Dup2X1
-  Dup2X2 -> pure Dup2X2
-  DupX1 -> pure DupX1
-  DupX2 -> pure DupX2
-  F2d -> pure F2d
-  F2i -> pure F2i
-  F2l -> pure F2l
-  Fadd -> pure Fadd
-  Faload -> pure Faload
-  Fastore -> pure Fastore
-  Fcmpg -> pure Fcmpg
-  Fcmpl -> pure Fcmpl
-  Fconst0 -> pure Fconst0
-  Fconst1 -> pure Fconst1
-  Fconst2 -> pure Fconst2
-  Fdiv -> pure Fdiv
-  Fload  i -> Fload <$> convert c i
-  Fload0 -> pure Fload0
-  Fload1 -> pure Fload1
-  Fload2 -> pure Fload2
-  Fload3 -> pure Fload3
-  Fmul -> pure Fmul
-  Fneg -> pure Fneg
-  Frem -> pure Frem
-  Freturn -> pure Freturn
-  Fstore  i -> Fstore <$> convert c i
-  Fstore0 -> pure Fstore0
-  Fstore1 -> pure Fstore1
-  Fstore2 -> pure Fstore2
-  Fstore3 -> pure Fstore3
-  Fsub -> pure Fsub
-  Getfield  i -> Getfield <$> convert c i
-  Getstatic  i -> Getstatic <$> convert c i
-  Goto l-> Goto <$> convert c l
-  GotoW  l -> GotoW <$> convert c l
-  I2b -> pure I2b
-  I2c -> pure I2c
-  I2d -> pure I2d
-  I2f -> pure I2f
-  I2l -> pure I2l
-  I2s -> pure I2s
-  Iadd -> pure Iadd
-  Iaload -> pure Iaload
-  Iand -> pure Iand
-  Iastore -> pure Iastore
-  Iconst0 -> pure Iconst0
-  Iconst1 -> pure Iconst1
-  Iconst2 -> pure Iconst2
-  Iconst3 -> pure Iconst3
-  Iconst4 -> pure Iconst4
-  Iconst5 -> pure Iconst5
-  IconstM1 -> pure IconstM1
-  Idiv -> pure Idiv
-  IfAcmpeq l -> IfAcmpeq <$> convert c l
-  IfAcmpne l -> IfAcmpne <$> convert c l
-  IfIcmpeq  l -> IfIcmpeq <$> convert c l
-  IfIcmpge  l -> IfIcmpge <$> convert c l
-  IfIcmpgt  l -> IfIcmpgt <$> convert c l
-  IfIcmple l  -> IfIcmple <$> convert c l
-  IfIcmplt  l -> IfIcmplt <$> convert c l
-  IfIcmpne  l -> IfIcmpne <$> convert c l
-  Ifeq  l -> Ifeq <$> convert c l
-  Ifge  l -> Ifge <$> convert c l
-  Ifgt  l -> Ifgt <$> convert c l
-  Ifle  l -> Ifle <$> convert c l
-  Iflt  l -> Iflt <$> convert c l
-  Ifne  l -> Ifne <$> convert c l
-  Ifnonnull l  -> Ifnonnull <$> convert c l
-  Ifnull  l -> Ifnull <$> convert c l
-  Iinc i ib -> Iinc <$> convert c i <*> convert c ib
-  Iload  i -> Iload <$> convert c i
-  Iload0 -> pure Iload0
-  Iload1 -> pure Iload1
-  Iload2 -> pure Iload2
-  Iload3 -> pure Iload3
-  Imul -> pure Imul
-  Ineg -> pure Ineg
-  Instanceof i -> Instanceof <$> convert c i
-  Invokedynamic  i -> Invokedynamic <$> convert c i
-  Invokeinterface  i ib-> Invokeinterface <$> convert c i <*> convert c ib
-  Invokespecial  i -> Invokespecial <$> convert c i
-  Invokestatic  i -> Invokestatic <$> convert c i
-  Invokevirtual  i -> Invokevirtual <$> convert c i
-  Ior -> pure Ior
-  Irem -> pure Irem
-  Ireturn -> pure Ireturn
-  Ishl -> pure Ishl
-  Ishr -> pure Ishr
-  Istore  i -> Istore <$> convert c i
-  Istore0 -> pure Istore0
-  Istore1 -> pure Istore1
-  Istore2 -> pure Istore2
-  Istore3 -> pure Istore3
-  Isub -> pure Isub
-  Iushr -> pure Iushr
-  Ixor -> pure Ixor
-  Jsr l-> Jsr <$> convert c l
-  JsrW l-> JsrW <$> convert c l
-  L2d -> pure L2d
-  L2f -> pure L2f
-  L2i -> pure L2i
-  Ladd -> pure Ladd
-  Laload -> pure Laload
-  Land -> pure Land
-  Lastore -> pure Lastore
-  Lcmp -> pure Lcmp
-  Lconst0 -> pure Lconst0
-  Lconst1 -> pure Lconst1
-  Ldc  i -> Ldc <$> convert c i
-  Ldc2W i  -> Ldc2W <$> convert c i
-  LdcW  i -> LdcW <$> convert c i
-  Ldiv -> pure Ldiv
-  Lload  i -> Lload <$> convert c i
-  Lload0 -> pure Lload0
-  Lload1 -> pure Lload1
-  Lload2 -> pure Lload2
-  Lload3 -> pure Lload3
-  Lmul -> pure Lmul
-  Lneg -> pure Lneg
-  Lor -> pure Lor
-  Lrem -> pure Lrem
-  Lreturn -> pure Lreturn
-  Lshl -> pure Lshl
-  Lshr -> pure Lshr
-  Lstore i  -> Lstore <$> convert c i
-  Lstore0 -> pure Lstore0
-  Lstore1 -> pure Lstore1
-  Lstore2 -> pure Lstore2
-  Lstore3 -> pure Lstore3
-  Lsub -> pure Lsub
-  Lushr -> pure Lushr
-  Lxor -> pure Lxor
-  Monitorenter -> pure Monitorenter
-  Monitorexit -> pure Monitorexit
-  Multianewarray  i ib-> Multianewarray <$> convert c i <*> convert c ib
-  New  i -> New <$> convert c i
-  Newarray arrayType-> Newarray <$> convert c arrayType
-  Nop -> pure Nop
-  Pop -> pure Pop
-  Pop2 -> pure Pop2
-  Putfield  i -> Putfield <$> convert c i
-  Putstatic  i -> Putstatic <$> convert c i
-  Ret i  -> Ret <$> convert c i
-  Return -> pure Return
-  Saload -> pure Saload
-  Sastore -> pure Sastore
-  Sipush is -> Sipush <$> convert c is
-  Swap -> pure Swap
+  -> Either e (Instruction' index' indexw' label' labelw' intByte' intShort' arrayType')
+convInstr c instruction =
+  case instruction of
+    Aaload               -> pure Aaload
+    Aastore              -> pure Aastore
+    AconstNull           -> pure AconstNull
+    Aload i              -> Aload <$> convert c i
+    Aload0               -> pure Aload0
+    Aload1               -> pure Aload1
+    Aload2               -> pure Aload2
+    Aload3               -> pure Aload3
+    Anewarray i          -> Anewarray <$> convert c i
+    Areturn              -> pure Areturn
+    Arraylength          -> pure Arraylength
+    Astore i             -> Astore <$> convert c i
+    Astore0              -> pure Astore0
+    Astore1              -> pure Astore1
+    Astore2              -> pure Astore2
+    Astore3              -> pure Astore3
+    Athrow               -> pure Athrow
+    Baload               -> pure Baload
+    Bastore              -> pure Bastore
+    Bipush ib            -> Bipush <$> convert c ib
+    Breakpoint           -> pure Breakpoint
+    Caload               -> pure Caload
+    Castore              -> pure Castore
+    Checkcast i          -> Checkcast <$> convert c i
+    D2f                  -> pure D2f
+    D2i                  -> pure D2i
+    D2l                  -> pure D2l
+    Dadd                 -> pure Dadd
+    Daload               -> pure Daload
+    Dastore              -> pure Dastore
+    Dcmpg                -> pure Dcmpg
+    Dcmpl                -> pure Dcmpl
+    Dconst0              -> pure Dconst0
+    Dconst1              -> pure Dconst1
+    Ddiv                 -> pure Ddiv
+    Dload i              -> Dload <$> convert c i
+    Dload0               -> pure Dload0
+    Dload1               -> pure Dload1
+    Dload2               -> pure Dload2
+    Dload3               -> pure Dload3
+    Dmul                 -> pure Dmul
+    Dneg                 -> pure Dneg
+    Drem                 -> pure Drem
+    Dreturn              -> pure Dreturn
+    Dstore i             -> Dstore <$> convert c i
+    Dstore0              -> pure Dstore0
+    Dstore1              -> pure Dstore1
+    Dstore2              -> pure Dstore2
+    Dstore3              -> pure Dstore3
+    Dsub                 -> pure Dsub
+    Dup                  -> pure Dup
+    Dup2                 -> pure Dup2
+    Dup2X1               -> pure Dup2X1
+    Dup2X2               -> pure Dup2X2
+    DupX1                -> pure DupX1
+    DupX2                -> pure DupX2
+    F2d                  -> pure F2d
+    F2i                  -> pure F2i
+    F2l                  -> pure F2l
+    Fadd                 -> pure Fadd
+    Faload               -> pure Faload
+    Fastore              -> pure Fastore
+    Fcmpg                -> pure Fcmpg
+    Fcmpl                -> pure Fcmpl
+    Fconst0              -> pure Fconst0
+    Fconst1              -> pure Fconst1
+    Fconst2              -> pure Fconst2
+    Fdiv                 -> pure Fdiv
+    Fload i              -> Fload <$> convert c i
+    Fload0               -> pure Fload0
+    Fload1               -> pure Fload1
+    Fload2               -> pure Fload2
+    Fload3               -> pure Fload3
+    Fmul                 -> pure Fmul
+    Fneg                 -> pure Fneg
+    Frem                 -> pure Frem
+    Freturn              -> pure Freturn
+    Fstore i             -> Fstore <$> convert c i
+    Fstore0              -> pure Fstore0
+    Fstore1              -> pure Fstore1
+    Fstore2              -> pure Fstore2
+    Fstore3              -> pure Fstore3
+    Fsub                 -> pure Fsub
+    Getfield i           -> Getfield <$> convert c i
+    Getstatic i          -> Getstatic <$> convert c i
+    Goto l               -> Goto <$> convert c l
+    GotoW l              -> GotoW <$> convert c l
+    I2b                  -> pure I2b
+    I2c                  -> pure I2c
+    I2d                  -> pure I2d
+    I2f                  -> pure I2f
+    I2l                  -> pure I2l
+    I2s                  -> pure I2s
+    Iadd                 -> pure Iadd
+    Iaload               -> pure Iaload
+    Iand                 -> pure Iand
+    Iastore              -> pure Iastore
+    Iconst0              -> pure Iconst0
+    Iconst1              -> pure Iconst1
+    Iconst2              -> pure Iconst2
+    Iconst3              -> pure Iconst3
+    Iconst4              -> pure Iconst4
+    Iconst5              -> pure Iconst5
+    IconstM1             -> pure IconstM1
+    Idiv                 -> pure Idiv
+    IfAcmpeq l           -> IfAcmpeq <$> convert c l
+    IfAcmpne l           -> IfAcmpne <$> convert c l
+    IfIcmpeq l           -> IfIcmpeq <$> convert c l
+    IfIcmpge l           -> IfIcmpge <$> convert c l
+    IfIcmpgt l           -> IfIcmpgt <$> convert c l
+    IfIcmple l           -> IfIcmple <$> convert c l
+    IfIcmplt l           -> IfIcmplt <$> convert c l
+    IfIcmpne l           -> IfIcmpne <$> convert c l
+    Ifeq l               -> Ifeq <$> convert c l
+    Ifge l               -> Ifge <$> convert c l
+    Ifgt l               -> Ifgt <$> convert c l
+    Ifle l               -> Ifle <$> convert c l
+    Iflt l               -> Iflt <$> convert c l
+    Ifne l               -> Ifne <$> convert c l
+    Ifnonnull l          -> Ifnonnull <$> convert c l
+    Ifnull l             -> Ifnull <$> convert c l
+    Iinc i ib            -> Iinc <$> convert c i <*> convert c ib
+    Iload i              -> Iload <$> convert c i
+    Iload0               -> pure Iload0
+    Iload1               -> pure Iload1
+    Iload2               -> pure Iload2
+    Iload3               -> pure Iload3
+    Imul                 -> pure Imul
+    Ineg                 -> pure Ineg
+    Instanceof i         -> Instanceof <$> convert c i
+    Invokedynamic i      -> Invokedynamic <$> convert c i
+    Invokeinterface i ib -> Invokeinterface <$> convert c i <*> convert c ib
+    Invokespecial i      -> Invokespecial <$> convert c i
+    Invokestatic i       -> Invokestatic <$> convert c i
+    Invokevirtual i      -> Invokevirtual <$> convert c i
+    Ior                  -> pure Ior
+    Irem                 -> pure Irem
+    Ireturn              -> pure Ireturn
+    Ishl                 -> pure Ishl
+    Ishr                 -> pure Ishr
+    Istore i             -> Istore <$> convert c i
+    Istore0              -> pure Istore0
+    Istore1              -> pure Istore1
+    Istore2              -> pure Istore2
+    Istore3              -> pure Istore3
+    Isub                 -> pure Isub
+    Iushr                -> pure Iushr
+    Ixor                 -> pure Ixor
+    Jsr l                -> Jsr <$> convert c l
+    JsrW l               -> JsrW <$> convert c l
+    L2d                  -> pure L2d
+    L2f                  -> pure L2f
+    L2i                  -> pure L2i
+    Ladd                 -> pure Ladd
+    Laload               -> pure Laload
+    Land                 -> pure Land
+    Lastore              -> pure Lastore
+    Lcmp                 -> pure Lcmp
+    Lconst0              -> pure Lconst0
+    Lconst1              -> pure Lconst1
+    Ldc i                -> Ldc <$> convert c i
+    Ldc2W i              -> Ldc2W <$> convert c i
+    LdcW i               -> LdcW <$> convert c i
+    Ldiv                 -> pure Ldiv
+    Lload i              -> Lload <$> convert c i
+    Lload0               -> pure Lload0
+    Lload1               -> pure Lload1
+    Lload2               -> pure Lload2
+    Lload3               -> pure Lload3
+    Lmul                 -> pure Lmul
+    Lneg                 -> pure Lneg
+    Lor                  -> pure Lor
+    Lrem                 -> pure Lrem
+    Lreturn              -> pure Lreturn
+    Lshl                 -> pure Lshl
+    Lshr                 -> pure Lshr
+    Lstore i             -> Lstore <$> convert c i
+    Lstore0              -> pure Lstore0
+    Lstore1              -> pure Lstore1
+    Lstore2              -> pure Lstore2
+    Lstore3              -> pure Lstore3
+    Lsub                 -> pure Lsub
+    Lushr                -> pure Lushr
+    Lxor                 -> pure Lxor
+    Monitorenter         -> pure Monitorenter
+    Monitorexit          -> pure Monitorexit
+    Multianewarray i ib  -> Multianewarray <$> convert c i <*> convert c ib
+    New i                -> New <$> convert c i
+    Newarray arrayType   -> Newarray <$> convert c arrayType
+    Nop                  -> pure Nop
+    Pop                  -> pure Pop
+    Pop2                 -> pure Pop2
+    Putfield i           -> Putfield <$> convert c i
+    Putstatic i          -> Putstatic <$> convert c i
+    Ret i                -> Ret <$> convert c i
+    Return               -> pure Return
+    Saload               -> pure Saload
+    Sastore              -> pure Sastore
+    Sipush is            -> Sipush <$> convert c is
+    Swap                 -> pure Swap

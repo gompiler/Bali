@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Base
@@ -21,7 +22,7 @@ module Base
   , MonadError(..)
   ) where
 
-import           Control.Monad.Except (MonadError(..))
+import           Control.Monad.Except (MonadError (..))
 import           Data.ByteString.Lazy (ByteString)
 import           Data.Functor         (($>), (<&>))
 import           Data.Int             (Int16, Int32, Int64, Int8)
@@ -29,8 +30,10 @@ import           Data.Word            (Word16, Word32, Word64, Word8)
 import           Numeric              (showHex)
 
 -- | Given context c and var a, convert to type b under monad error with e
-class Convertible c e a b where
-  convert :: MonadError e m => c -> a -> m b
+class Convertible c e a b
+  -- convert :: MonadError e m => c -> a -> m b
+  where
+  convert :: c -> a -> Either e b -- todo see if it's worth loosening to MonadError
 
 infixl 4 <$->, <*->, <$$>
 

@@ -3,8 +3,10 @@ Data mapping for Java class data
 See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html
 -}
 {-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecordWildCards       #-}
 
 module D2Data
   ( NameAndTypeInfo(..)
@@ -23,6 +25,7 @@ module D2Data
   , MethodInfo
   , Attributes
   , AttributeInfo(..)
+  , refInfo
   , module DData
   ) where
 
@@ -58,15 +61,19 @@ type MethodInfo = MethodInfo' ByteString ByteString AttributeInfo
 type Attributes = Attributes' AttributeInfo
 
 data NameAndTypeInfo = NameAndTypeInfo
-  { ntName :: ByteString
-  , ntType :: ByteString
+  { nameInfo :: ByteString
+  , typeInfo :: ByteString
   } deriving (Show, Eq)
 
 data RefInfo = RefInfo
-  { rClass :: ByteString
-  , rName  :: ByteString
-  , rType  :: ByteString
+  { classInfo :: ByteString
+  , nameInfo  :: ByteString
+  , typeInfo  :: ByteString
   } deriving (Show, Eq)
+
+refInfo :: ByteString -> NameAndTypeInfo -> RefInfo
+refInfo classInfo NameAndTypeInfo {..} =
+  RefInfo {classInfo = classInfo, nameInfo = nameInfo, typeInfo = typeInfo}
 
 data AttributeInfoKind
   = ACode'

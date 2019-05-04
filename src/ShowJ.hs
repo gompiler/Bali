@@ -74,7 +74,7 @@ instance ShowJ ClassFile where
     _nl <>
     tab <>
     byteString ".class" <>
-    showJ accessFlags <>
+    showJ accessFlag <>
     _sp <>
     showJ thisClass <>
     _nl <>
@@ -129,11 +129,11 @@ instance ShowJ Fields where
 
 instance ShowJ FieldInfo where
   showJ' tabCount FieldInfo {..} =
-    _tab tabCount <> byteString ".field" <> showJ fAccessFlags <> _sp <>
-    showJ fName <>
+    _tab tabCount <> byteString ".field" <> showJ accessFlag <> _sp <>
+    showJ nameIndex <>
     _sp <>
-    showJ fDesc <>
-    showJlist' _nl (tabCount + 1) fAttrs
+    showJ descIndex <>
+    showJlist' _nl (tabCount + 1) attrs
 
 instance ShowJ Methods where
   showJ' tabCount (Methods l) =
@@ -141,11 +141,11 @@ instance ShowJ Methods where
 
 instance ShowJ MethodInfo where
   showJ' tabCount MethodInfo {..} =
-    _tab tabCount <> byteString ".method" <> showJ mAccessFlags <> _sp <>
-    showJ mName <>
+    _tab tabCount <> byteString ".method" <> showJ accessFlag <> _sp <>
+    showJ nameIndex <>
     byteString " : " <>
-    showJ mDesc <>
-    showJlist' _nl (tabCount + 1) mAttrs
+    showJ descIndex <>
+    showJlist' _nl (tabCount + 1) attrs
 
 instance ShowJ Attributes where
   showJ' tabCount (Attributes l) =

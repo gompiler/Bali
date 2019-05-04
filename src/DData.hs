@@ -6,12 +6,16 @@ Note that this represents the first iteration, where we focus on parsing.
 All instances of indices are left as is, and no verification is made
 with regards to the indices.
 -}
-{-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE DeriveFoldable    #-}
-{-# LANGUAGE MultiWayIf        #-}
-{-# LANGUAGE NamedFieldPuns    #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DefaultSignatures     #-}
+{-# LANGUAGE DeriveFoldable        #-}
+{-# LANGUAGE DeriveTraversable     #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE MultiWayIf            #-}
+{-# LANGUAGE NamedFieldPuns        #-}
+{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module DData where
 
@@ -111,47 +115,32 @@ data ClassFile' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refI
   , attrs :: Attributes' attr
   } deriving (Show, Eq)
 
-convClassFile ::
-     ( MonadError e m
-     , Convertible c e classIndex classIndex'
-     , Convertible c e nameIndex nameIndex'
-     , Convertible c e descIndex descIndex'
-     , Convertible c e nameAndTypeIndex nameAndTypeIndex'
-     , Convertible c e stringIndex stringIndex'
-     , Convertible c e refIndex refIndex'
-     , Convertible c e attr attr'
-     )
-  => c
-  -> ClassFile' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex attr
-  -> m (ClassFile' classIndex' nameIndex' descIndex' nameAndTypeIndex' stringIndex' refIndex' attr')
-convClassFile c ClassFile {..} =
-  ClassFile <$-> minorVersion <*-> majorVersion <*>
-  convConstantPool c constantPool <*-> accessFlag <*>
-  convert c thisClass <*>
-  convert c superClass <*>
-  convInterfaces c interfaces <*>
-  convFields c fields <*>
-  convMethods c methods <*>
-  convAttrs c attrs
+instance ( Convertible c e classIndex classIndex'
+         , Convertible c e nameIndex nameIndex'
+         , Convertible c e descIndex descIndex'
+         , Convertible c e nameAndTypeIndex nameAndTypeIndex'
+         , Convertible c e stringIndex stringIndex'
+         , Convertible c e (CpMethodHandle, refIndex) refIndex'
+         , Convertible c e attr attr'
+         ) =>
+         Convertible c e (ClassFile' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex attr) (ClassFile' classIndex' nameIndex' descIndex' nameAndTypeIndex' stringIndex' refIndex' attr') where
+  convert c ClassFile {..} =
+    ClassFile <$-> minorVersion <*-> majorVersion <*>
+    convert c constantPool <*-> accessFlag <*>
+    convert c thisClass <*>
+    convert c superClass <*>
+    convert c interfaces <*>
+    convert c fields <*>
+    convert c methods <*>
+    convert c attrs
 
 newtype ConstantPool' a =
   ConstantPool [a]
-  deriving (Eq, Foldable)
+  deriving (Eq, Foldable, Functor, Traversable)
 
-convConstantPool ::
-     ( MonadError e m
-     , Convertible c e classIndex classIndex'
-     , Convertible c e nameIndex nameIndex'
-     , Convertible c e descIndex descIndex'
-     , Convertible c e nameAndTypeIndex nameAndTypeIndex'
-     , Convertible c e stringIndex stringIndex'
-     , Convertible c e refIndex refIndex'
-     )
-  => c
-  -> ConstantPool' (ConstantPoolInfo' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex)
-  -> m (ConstantPool' (ConstantPoolInfo' classIndex' nameIndex' descIndex' nameAndTypeIndex' stringIndex' refIndex'))
-convConstantPool c (ConstantPool l) =
-  ConstantPool <$> mapM (convConstantPoolInfo c) l
+instance Convertible c e a b =>
+         Convertible c e (ConstantPool' a) (ConstantPool' b) where
+  convert = mapM . convert
 
 instance Show a => Show (ConstantPool' a) where
   show (ConstantPool l) = showList (Just 1) (Just "ConstantPool") l
@@ -188,31 +177,31 @@ data ConstantPoolInfo' classIndex nameIndex descIndex nameAndTypeIndex stringInd
                     nameAndTypeIndex
   deriving (Show, Eq)
 
-convConstantPoolInfo ::
-     ( MonadError e m
-     , Convertible c e classIndex classIndex'
-     , Convertible c e nameIndex nameIndex'
-     , Convertible c e descIndex descIndex'
-     , Convertible c e nameAndTypeIndex nameAndTypeIndex'
-     , Convertible c e stringIndex stringIndex'
-     , Convertible c e refIndex refIndex'
-     )
-  => c -> ConstantPoolInfo' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex -> m (ConstantPoolInfo' classIndex' nameIndex' descIndex' nameAndTypeIndex' stringIndex' refIndex')
-convConstantPoolInfo c constantPoolInfo = case constantPoolInfo of
-   CpClass ci -> CpClass <$> convert c ci
-   CpFieldRef ci nti -> CpFieldRef <$> convert c ci <*> convert c nti
-   CpMethodRef ci nti -> CpMethodRef <$> convert c ci <*> convert c nti
-   CpInterfaceMethodRef ci nti -> CpInterfaceMethodRef <$> convert c ci <*> convert c nti
-   CpString si -> CpString <$> convert c si
-   CpInteger i -> pure $ CpInteger i
-   CpFloat f -> pure $ CpFloat f
-   CpLong l -> pure $ CpLong l
-   CpDouble d -> pure $ CpDouble d
-   CpNameAndType ni di -> CpNameAndType <$> convert c ni <*> convert c di
-   CpInfo s -> pure $ CpInfo s
-   CpMethodHandle mh ri -> CpMethodHandle <$-> mh <*> convert c ri
-   CpMethodType di -> CpMethodType <$> convert c di
-   CpInvokeDynamic i nti -> CpInvokeDynamic <$-> i <*> convert c nti
+instance ( Convertible c e classIndex classIndex'
+         , Convertible c e nameIndex nameIndex'
+         , Convertible c e descIndex descIndex'
+         , Convertible c e nameAndTypeIndex nameAndTypeIndex'
+         , Convertible c e stringIndex stringIndex'
+         , Convertible c e (CpMethodHandle, refIndex) refIndex'
+         ) =>
+         Convertible c e (ConstantPoolInfo' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex) (ConstantPoolInfo' classIndex' nameIndex' descIndex' nameAndTypeIndex' stringIndex' refIndex') where
+  convert c constantPoolInfo =
+    case constantPoolInfo of
+      CpClass ci -> CpClass <$> convert c ci
+      CpFieldRef ci nti -> CpFieldRef <$> convert c ci <*> convert c nti
+      CpMethodRef ci nti -> CpMethodRef <$> convert c ci <*> convert c nti
+      CpInterfaceMethodRef ci nti ->
+        CpInterfaceMethodRef <$> convert c ci <*> convert c nti
+      CpString si -> CpString <$> convert c si
+      CpInteger i -> pure $ CpInteger i
+      CpFloat f -> pure $ CpFloat f
+      CpLong l -> pure $ CpLong l
+      CpDouble d -> pure $ CpDouble d
+      CpNameAndType ni di -> CpNameAndType <$> convert c ni <*> convert c di
+      CpInfo s -> pure $ CpInfo s
+      CpMethodHandle mh ri -> CpMethodHandle <$-> mh <*> convert c (mh, ri)
+      CpMethodType di -> CpMethodType <$> convert c di
+      CpInvokeDynamic i nti -> CpInvokeDynamic <$-> i <*> convert c nti
 
 -- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-5.html#jvms-5.4.3.5
 data CpMethodHandle
@@ -246,58 +235,38 @@ instance Show AccessFlag where
 
 newtype Interfaces' l =
   Interfaces [l]
-  deriving (Eq, Foldable)
+  deriving (Eq, Foldable, Functor, Traversable)
+
+instance Convertible c e a b =>
+         Convertible c e (Interfaces' a) (Interfaces' b) where
+  convert = mapM . convert
 
 instance Show a => Show (Interfaces' a) where
   show (Interfaces l) = showList (Just 0) (Just "Interfaces") l
-
-
-convInterfaces ::
-     ( MonadError e m
-     , Convertible c e classIndex classIndex'
-     )
-  => c
-  -> Interfaces' (InterfaceInfo' classIndex)
-  -> m (Interfaces' (InterfaceInfo' classIndex'))
-convInterfaces c (Interfaces l) = Interfaces <$> mapM (convInterfaceInfo c) l
 
 newtype InterfaceInfo' classIndex =
   InterfaceInfo classIndex
   deriving (Show, Eq)
 
-convInterfaceInfo ::
-     ( MonadError e m
-     , Convertible c e classIndex classIndex'
-     )
-  => c
-  -> InterfaceInfo' classIndex
-  -> m (InterfaceInfo' classIndex')
-convInterfaceInfo c (InterfaceInfo i) =
-  InterfaceInfo <$> convert c i
+instance Convertible c e classIndex classIndex' =>
+         Convertible c e (InterfaceInfo' classIndex) (InterfaceInfo' classIndex') where
+  convert c (InterfaceInfo i) = InterfaceInfo <$> convert c i
 
 newtype Fields' l =
   Fields [l]
-  deriving (Eq, Foldable)
+  deriving (Eq, Foldable, Functor, Traversable)
 
-convFields ::
-     ( MonadError e m
-     , Convertible c e nameIndex nameIndex'
-     , Convertible c e descIndex descIndex'
-     , Convertible c e attr attr'
-     )
-  => c
-  -> Fields' (FieldInfo' nameIndex descIndex attr)
-  -> m (Fields' (FieldInfo' nameIndex' descIndex' attr'))
-convFields c (Fields l) = Fields <$> mapM (convFieldInfo c) l
+instance Convertible c e a b => Convertible c e (Fields' a) (Fields' b) where
+  convert = mapM . convert
 
 instance Show a => Show (Fields' a) where
   show (Fields l) = showList (Just 0) (Just "Fields") l
 
 data FieldInfo' nameIndex descIndex attr = FieldInfo
   { accessFlag :: AccessFlag
-  , nameIndex   :: nameIndex
-  , descIndex   :: descIndex
-  , attrs       :: Attributes' attr
+  , nameIndex  :: nameIndex
+  , descIndex  :: descIndex
+  , attrs      :: Attributes' attr
   } deriving (Show, Eq)
 
 instance HasAccessFlag (FieldInfo' nameIndex descIndex attr) where
@@ -305,20 +274,14 @@ instance HasAccessFlag (FieldInfo' nameIndex descIndex attr) where
 
 instance AccessInfo (FieldInfo' nameIndex descIndex attr)
 
-convFieldInfo ::
-     ( MonadError e m
-     , Convertible c e nameIndex nameIndex'
-     , Convertible c e descIndex descIndex'
-     , Convertible c e attr attr'
-     )
-  => c
-  -> FieldInfo' nameIndex descIndex attr
-  -> m (FieldInfo' nameIndex' descIndex' attr')
-convFieldInfo c FieldInfo {..} =
-  FieldInfo <$-> accessFlag <*> convert c nameIndex <*>
-  convert c descIndex <*>
-  convAttrs c attrs
-
+instance ( Convertible c e nameIndex nameIndex'
+         , Convertible c e descIndex descIndex'
+         , Convertible c e attr attr'
+         ) =>
+         Convertible c e (FieldInfo' nameIndex descIndex attr) (FieldInfo' nameIndex' descIndex' attr') where
+  convert c FieldInfo {..} =
+    FieldInfo <$-> accessFlag <*> convert c nameIndex <*> convert c descIndex <*>
+    convert c attrs
 
 -- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.3.2-200
 -- Aka type
@@ -343,42 +306,29 @@ data MethodDescriptor =
 
 newtype Methods' l =
   Methods [l]
-  deriving (Eq, Foldable)
+  deriving (Eq, Foldable, Functor, Traversable)
+
+instance Convertible c e a b => Convertible c e (Methods' a) (Methods' b) where
+  convert = mapM . convert
 
 instance Show a => Show (Methods' a) where
   show (Methods l) = showList (Just 0) (Just "Methods") l
 
-convMethods ::
-     ( MonadError e m
-     , Convertible c e nameIndex nameIndex'
-     , Convertible c e descIndex descIndex'
-     , Convertible c e attr attr'
-     )
-  => c
-  -> Methods' (MethodInfo' nameIndex descIndex attr)
-  -> m (Methods' (MethodInfo' nameIndex' descIndex' attr'))
-convMethods c (Methods l) = Methods <$> mapM (convMethodInfo c) l
-
 data MethodInfo' nameIndex descIndex attr = MethodInfo
   { accessFlag :: AccessFlag
-  , nameIndex   :: nameIndex
-  , descIndex   :: descIndex
-  , attrs       :: Attributes' attr
+  , nameIndex  :: nameIndex
+  , descIndex  :: descIndex
+  , attrs      :: Attributes' attr
   } deriving (Show, Eq)
 
-convMethodInfo ::
-     ( MonadError e m
-     , Convertible c e nameIndex nameIndex'
-     , Convertible c e descIndex descIndex'
-     , Convertible c e attr attr'
-     )
-  => c
-  -> MethodInfo' nameIndex descIndex attr
-  -> m (MethodInfo' nameIndex' descIndex' attr')
-convMethodInfo c MethodInfo {..} =
-  MethodInfo <$-> accessFlag <*> convert c nameIndex <*>
-  convert c descIndex <*>
-  convAttrs c attrs
+instance ( Convertible c e nameIndex nameIndex'
+         , Convertible c e descIndex descIndex'
+         , Convertible c e attr attr'
+         ) =>
+         Convertible c e (MethodInfo' nameIndex descIndex attr) (MethodInfo' nameIndex' descIndex' attr') where
+  convert c MethodInfo {..} =
+    MethodInfo <$-> accessFlag <*> convert c nameIndex <*> convert c descIndex <*>
+    convert c attrs
 
 instance HasAccessFlag (MethodInfo' nameIndex descIndex attr) where
   _getAccessFlag = accessFlag
@@ -387,11 +337,11 @@ instance AccessInfo (MethodInfo' nameIndex descIndex attr)
 
 newtype Attributes' l =
   Attributes [l]
-  deriving (Eq, Foldable)
+  deriving (Eq, Foldable, Functor, Traversable)
 
-convAttrs :: (MonadError e m, Convertible c e attr attr')
-  => c -> Attributes' attr -> m (Attributes' attr')
-convAttrs c  (Attributes l) = Attributes <$> mapM (convert c) l
+instance Convertible c e a b =>
+         Convertible c e (Attributes' a) (Attributes' b) where
+  convert = mapM . convert
 
 instance Show a => Show (Attributes' a) where
   show (Attributes l) = showList (Just 0) (Just "Attributes") l
@@ -400,7 +350,11 @@ type ExceptionTables = ExceptionTables' ExceptionTable
 
 newtype ExceptionTables' l =
   ExceptionTables [l]
-  deriving (Eq, Foldable)
+  deriving (Eq, Foldable, Functor, Traversable)
+
+instance Convertible c e a b =>
+         Convertible c e (ExceptionTables' a) (ExceptionTables' b) where
+  convert = mapM . convert
 
 instance Show a => Show (ExceptionTables' a) where
   show (ExceptionTables l) = showList (Just 0) (Just "ExceptionTables") l
