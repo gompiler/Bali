@@ -105,6 +105,16 @@ class Instruction:
                     builder = builder + 'undefined {{- {} -}}'.format(a)
         return '0x{} -> {}'.format(self.op_code, builder)
 
+    def haskell_map(self):
+        if not self.args:
+            builder = 'pure {}'.format(self.haskell_name)
+        else:
+            builder = self.haskell_name
+            for i, a in enumerate(self.args):
+                builder = builder + (' <$> ' if i == 0 else ' <*> ')
+                builder = builder + a
+        return '{} -> {}'.format(self.haskell_name, builder)
+
     def haskell_showj(self):
         s = '{} -> byteString "{}"'.format(self.haskell_name, self.name)
         if self.args:
@@ -146,4 +156,9 @@ def print_showj():
         print(instr.haskell_showj())
 
 
-print_showj()
+def print_map():
+    for instr in instructions:
+        print(instr.haskell_map())
+
+
+print_map()

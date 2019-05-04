@@ -19,6 +19,7 @@ import           DData                (Index)
 import qualified DData                as T
 import           DParse
 import           IRData
+import           IR1Data
 import           Text.Megaparsec
 
 data ConvError

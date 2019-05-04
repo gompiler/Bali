@@ -28,6 +28,7 @@ import           Data.ByteString.Internal   (c2w, w2c)
 import           Data.ByteString.Lazy       (pack)
 import           DData
 import           IRData
+import           IR1Data
 import           Text.Megaparsec
 import qualified Text.Megaparsec.Byte.Lexer as L
 

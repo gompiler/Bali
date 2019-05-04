@@ -39,15 +39,15 @@ module D2Data
   ) where
 
 import           Base
-import           Data.Int     (Int64)
-import           DData        (AccessFlag (..), Attributes' (..),
-                               ConstantPool' (..), CpMethodHandle (..),
-                               ExceptionTable (..), ExceptionTables,
-                               ExceptionTables' (..), FieldAccess (..),
-                               AccessInfo (..), FieldDescriptor (..),
-                               Fields' (..), Interfaces' (..),
-                               MethodDescriptor (..), Methods' (..))
-import           GHC.Int      (Int32)
+import           Data.Int (Int64)
+import           DData    (AccessFlag (..), AccessInfo (..), Attributes' (..),
+                           ConstantPool' (..), CpMethodHandle (..),
+                           ExceptionTable (..), ExceptionTables,
+                           ExceptionTables' (..), FieldAccess (..),
+                           FieldDescriptor (..), Fields' (..), Interfaces' (..),
+                           MethodDescriptor (..), Methods' (..))
+import           GHC.Int  (Int32)
+import           IR1Data
 import           IRData
 
 type TODO = ()
@@ -112,7 +112,8 @@ data Constant
 
 type Interfaces = Interfaces' InterfaceInfo
 
-newtype InterfaceInfo = InterfaceInfo ByteString
+newtype InterfaceInfo =
+  InterfaceInfo ByteString
   deriving (Show, Eq)
 
 type Fields = Fields' FieldInfo

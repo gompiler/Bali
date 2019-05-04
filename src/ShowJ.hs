@@ -16,6 +16,7 @@ import           Data.ByteString.Builder
 import qualified Data.ByteString.Lazy.Char8 as L
 import           Data.List                  (intersperse)
 import           IRData
+import           IR1Data
 import           System.IO
 
 tabSize :: Int

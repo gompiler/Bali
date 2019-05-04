@@ -50,7 +50,7 @@ data ArrayType
 
 type Instructions = Instructions' Instruction
 
-data InstructionFunctor index index' indexw indexw' label label' labelw labelw' intByte intByte' intShort intShort' arrayType arrayType' = InstructionFunctor
+data InstructionApplicative index index' indexw indexw' label label' labelw labelw' intByte intByte' intShort intShort' arrayType arrayType' = InstructionApplicative
   { mapIndex     :: index -> index'
   , mapIndexw    :: indexw -> indexw'
   , mapLabel     :: label -> label'

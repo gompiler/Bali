@@ -4,7 +4,9 @@ See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-6.html#jvms-6.5
 -}
 {-# LANGUAGE DeriveFoldable       #-}
 {-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE RecordWildCards      #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
 
 module IRData where
 
@@ -18,15 +20,16 @@ newtype Instructions' l =
 instance Show l => Show (Instructions' l) where
   show (Instructions l) = intercalate "\n" $ map show l
 
-data InstructionFunctor index index' indexw indexw' label label' labelw labelw' intByte intByte' intShort intShort' arrayType arrayType' = InstructionFunctor
-  { mapIndex     :: index -> index'
-  , mapIndexw    :: indexw -> indexw'
-  , mapLabel     :: label -> label'
-  , mapLabelw    :: labelw -> labelw'
-  , mapIntByte   :: intByte -> intByte'
-  , mapIntShort  :: intShort -> intShort'
-  , mapArrayType :: arrayType -> arrayType'
-  }
+data InstructionApplicative f index index' indexw indexw' label label' labelw labelw' intByte intByte' intShort intShort' arrayType arrayType' where
+  InstructionApplicative :: Applicative f =>
+    { mapIndex     :: index -> f index'
+    , mapIndexw    :: indexw -> f indexw'
+    , mapLabel     :: label -> f label'
+    , mapLabelw    :: labelw -> f labelw'
+    , mapIntByte   :: intByte -> f intByte'
+    , mapIntShort  :: intShort -> f intShort'
+    , mapArrayType :: arrayType -> f arrayType'
+    } -> InstructionApplicative  f index index' indexw indexw' label label' labelw labelw' intByte intByte' intShort intShort' arrayType arrayType'
 
 -- | Collection of all jvm bytecode instructions
 -- See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-6.html#jvms-6.5
@@ -238,3 +241,209 @@ data Instruction' index indexw label labelw intByte intShort arrayType
   | Sipush intShort -- sipush: -> value
   | Swap -- swap: value2, value1 -> value1, value2
   deriving (Show, Eq)
+
+instrMap ::
+     InstructionApplicative f index index' indexw indexw' label label' labelw labelw' intByte intByte' intShort intShort' arrayType arrayType'
+  -> Instruction' index indexw label labelw intByte intShort arrayType
+  -> f (Instruction' index' indexw' label' labelw' intByte' intShort' arrayType')
+instrMap InstructionApplicative {..} instruction = case instruction of
+  Aaload -> pure Aaload
+  Aastore -> pure Aastore
+  AconstNull -> pure AconstNull
+  Aload i -> Aload <$> mapIndex i
+  Aload0 -> pure Aload0
+  Aload1 -> pure Aload1
+  Aload2 -> pure Aload2
+  Aload3 -> pure Aload3
+  Anewarray i  -> Anewarray <$> mapIndexw i
+  Areturn -> pure Areturn
+  Arraylength -> pure Arraylength
+  Astore i  -> Astore <$> mapIndex i
+  Astore0 -> pure Astore0
+  Astore1 -> pure Astore1
+  Astore2 -> pure Astore2
+  Astore3 -> pure Astore3
+  Athrow -> pure Athrow
+  Baload -> pure Baload
+  Bastore -> pure Bastore
+  Bipush ib -> Bipush <$> mapIntByte ib
+  Breakpoint -> pure Breakpoint
+  Caload -> pure Caload
+  Castore -> pure Castore
+  Checkcast  i -> Checkcast <$> mapIndexw i
+  D2f -> pure D2f
+  D2i -> pure D2i
+  D2l -> pure D2l
+  Dadd -> pure Dadd
+  Daload -> pure Daload
+  Dastore -> pure Dastore
+  Dcmpg -> pure Dcmpg
+  Dcmpl -> pure Dcmpl
+  Dconst0 -> pure Dconst0
+  Dconst1 -> pure Dconst1
+  Ddiv -> pure Ddiv
+  Dload  i -> Dload <$> mapIndex i
+  Dload0 -> pure Dload0
+  Dload1 -> pure Dload1
+  Dload2 -> pure Dload2
+  Dload3 -> pure Dload3
+  Dmul -> pure Dmul
+  Dneg -> pure Dneg
+  Drem -> pure Drem
+  Dreturn -> pure Dreturn
+  Dstore  i -> Dstore <$> mapIndex i
+  Dstore0 -> pure Dstore0
+  Dstore1 -> pure Dstore1
+  Dstore2 -> pure Dstore2
+  Dstore3 -> pure Dstore3
+  Dsub -> pure Dsub
+  Dup -> pure Dup
+  Dup2 -> pure Dup2
+  Dup2X1 -> pure Dup2X1
+  Dup2X2 -> pure Dup2X2
+  DupX1 -> pure DupX1
+  DupX2 -> pure DupX2
+  F2d -> pure F2d
+  F2i -> pure F2i
+  F2l -> pure F2l
+  Fadd -> pure Fadd
+  Faload -> pure Faload
+  Fastore -> pure Fastore
+  Fcmpg -> pure Fcmpg
+  Fcmpl -> pure Fcmpl
+  Fconst0 -> pure Fconst0
+  Fconst1 -> pure Fconst1
+  Fconst2 -> pure Fconst2
+  Fdiv -> pure Fdiv
+  Fload  i -> Fload <$> mapIndex i
+  Fload0 -> pure Fload0
+  Fload1 -> pure Fload1
+  Fload2 -> pure Fload2
+  Fload3 -> pure Fload3
+  Fmul -> pure Fmul
+  Fneg -> pure Fneg
+  Frem -> pure Frem
+  Freturn -> pure Freturn
+  Fstore  i -> Fstore <$> mapIndex i
+  Fstore0 -> pure Fstore0
+  Fstore1 -> pure Fstore1
+  Fstore2 -> pure Fstore2
+  Fstore3 -> pure Fstore3
+  Fsub -> pure Fsub
+  Getfield  i -> Getfield <$> mapIndexw i
+  Getstatic  i -> Getstatic <$> mapIndexw i
+  Goto l-> Goto <$> mapLabel l
+  GotoW  l -> GotoW <$> mapLabelw l
+  I2b -> pure I2b
+  I2c -> pure I2c
+  I2d -> pure I2d
+  I2f -> pure I2f
+  I2l -> pure I2l
+  I2s -> pure I2s
+  Iadd -> pure Iadd
+  Iaload -> pure Iaload
+  Iand -> pure Iand
+  Iastore -> pure Iastore
+  Iconst0 -> pure Iconst0
+  Iconst1 -> pure Iconst1
+  Iconst2 -> pure Iconst2
+  Iconst3 -> pure Iconst3
+  Iconst4 -> pure Iconst4
+  Iconst5 -> pure Iconst5
+  IconstM1 -> pure IconstM1
+  Idiv -> pure Idiv
+  IfAcmpeq l -> IfAcmpeq <$> mapLabel l
+  IfAcmpne l -> IfAcmpne <$> mapLabel l
+  IfIcmpeq  l -> IfIcmpeq <$> mapLabel l
+  IfIcmpge  l -> IfIcmpge <$> mapLabel l
+  IfIcmpgt  l -> IfIcmpgt <$> mapLabel l
+  IfIcmple l  -> IfIcmple <$> mapLabel l
+  IfIcmplt  l -> IfIcmplt <$> mapLabel l
+  IfIcmpne  l -> IfIcmpne <$> mapLabel l
+  Ifeq  l -> Ifeq <$> mapLabel l
+  Ifge  l -> Ifge <$> mapLabel l
+  Ifgt  l -> Ifgt <$> mapLabel l
+  Ifle  l -> Ifle <$> mapLabel l
+  Iflt  l -> Iflt <$> mapLabel l
+  Ifne  l -> Ifne <$> mapLabel l
+  Ifnonnull l  -> Ifnonnull <$> mapLabel l
+  Ifnull  l -> Ifnull <$> mapLabel l
+  Iinc i ib -> Iinc <$> mapIndex i <*> mapIntByte ib
+  Iload  i -> Iload <$> mapIndex i
+  Iload0 -> pure Iload0
+  Iload1 -> pure Iload1
+  Iload2 -> pure Iload2
+  Iload3 -> pure Iload3
+  Imul -> pure Imul
+  Ineg -> pure Ineg
+  Instanceof i -> Instanceof <$> mapIndexw i
+  Invokedynamic  i -> Invokedynamic <$> mapIndexw i
+  Invokeinterface  i ib-> Invokeinterface <$> mapIndexw i <*> mapIntByte ib
+  Invokespecial  i -> Invokespecial <$> mapIndexw i
+  Invokestatic  i -> Invokestatic <$> mapIndexw i
+  Invokevirtual  i -> Invokevirtual <$> mapIndexw i
+  Ior -> pure Ior
+  Irem -> pure Irem
+  Ireturn -> pure Ireturn
+  Ishl -> pure Ishl
+  Ishr -> pure Ishr
+  Istore  i -> Istore <$> mapIndex i
+  Istore0 -> pure Istore0
+  Istore1 -> pure Istore1
+  Istore2 -> pure Istore2
+  Istore3 -> pure Istore3
+  Isub -> pure Isub
+  Iushr -> pure Iushr
+  Ixor -> pure Ixor
+  Jsr l-> Jsr <$> mapLabel l
+  JsrW l-> JsrW <$> mapLabelw l
+  L2d -> pure L2d
+  L2f -> pure L2f
+  L2i -> pure L2i
+  Ladd -> pure Ladd
+  Laload -> pure Laload
+  Land -> pure Land
+  Lastore -> pure Lastore
+  Lcmp -> pure Lcmp
+  Lconst0 -> pure Lconst0
+  Lconst1 -> pure Lconst1
+  Ldc  i -> Ldc <$> mapIndex i
+  Ldc2W i  -> Ldc2W <$> mapIndexw i
+  LdcW  i -> LdcW <$> mapIndexw i
+  Ldiv -> pure Ldiv
+  Lload  i -> Lload <$> mapIndex i
+  Lload0 -> pure Lload0
+  Lload1 -> pure Lload1
+  Lload2 -> pure Lload2
+  Lload3 -> pure Lload3
+  Lmul -> pure Lmul
+  Lneg -> pure Lneg
+  Lor -> pure Lor
+  Lrem -> pure Lrem
+  Lreturn -> pure Lreturn
+  Lshl -> pure Lshl
+  Lshr -> pure Lshr
+  Lstore i  -> Lstore <$> mapIndex i
+  Lstore0 -> pure Lstore0
+  Lstore1 -> pure Lstore1
+  Lstore2 -> pure Lstore2
+  Lstore3 -> pure Lstore3
+  Lsub -> pure Lsub
+  Lushr -> pure Lushr
+  Lxor -> pure Lxor
+  Monitorenter -> pure Monitorenter
+  Monitorexit -> pure Monitorexit
+  Multianewarray  i ib-> Multianewarray <$> mapIndexw i <*> mapIntByte ib
+  New  i -> New <$> mapIndexw i
+  Newarray arrayType-> Newarray <$> mapArrayType arrayType
+  Nop -> pure Nop
+  Pop -> pure Pop
+  Pop2 -> pure Pop2
+  Putfield  i -> Putfield <$> mapIndexw i
+  Putstatic  i -> Putstatic <$> mapIndexw i
+  Ret i  -> Ret <$> mapIndex i
+  Return -> pure Return
+  Saload -> pure Saload
+  Sastore -> pure Sastore
+  Sipush is -> Sipush <$> mapIntShort is
+  Swap -> pure Swap
