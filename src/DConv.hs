@@ -45,6 +45,14 @@ instance Ord ConvError
 instance ShowErrorComponent ConvError where
   showErrorComponent = show
 
+converter :: DConverter ConstantPool Either T.ClassIndex ByteString T.NameIndex ByteString T.DescIndex ByteString T.NameAndTypeIndex NameAndTypeInfo T.StringIndex ByteString T.RefIndex RefInfo T.AttributeInfo AttributeInfo
+converter =
+  DConverter {
+    mapClassIndex = getInfo'
+  }
+  where
+    getInfo' cp (T.ClassIndex i) = getInfo cp i
+
 instance Show ConvError where
   show err =
     case err of
@@ -74,70 +82,6 @@ dconv T.ClassFile {..} = do
 
 class DConvertible a b where
   conv :: ConstantPool -> a -> DConv b
-
-instance DConvertible a a where
-  conv _ = pure
-
---instance DParse a => DConvertible ByteString a where
---  conv _ = either (Left . ParseError) Right . parse dparse' ""
-instance DConvertible Index ByteString where
-  conv = getInfo
-
-instance DConvertible T.ClassIndex ByteString where
-  conv cp (T.ClassIndex i) = getClass cp i
-
-instance DConvertible T.NameIndex ByteString where
-  conv cp (T.NameIndex i) = getInfo cp i
-
-instance DConvertible T.NameAndTypeIndex (ByteString, ByteString) where
-  conv cp (T.NameAndTypeIndex i) = getNameAndType cp i
-
-instance DConvertible T.DescIndex ByteString where
-  conv cp (T.DescIndex i) = getInfo cp i
-
-instance DConvertible T.StringIndex ByteString where
-  conv cp (T.StringIndex i) = getInfo cp i
-
-instance DConvertible T.Interfaces Interfaces where
-  conv cp (T.Interfaces l) = Interfaces <$> mapM (conv cp) l
-
-instance DConvertible T.InterfaceInfo InterfaceInfo where
-  conv cp (T.InterfaceInfo s) = InterfaceInfo <$> conv cp s
-
-instance DConvertible T.Fields Fields where
-  conv cp (T.Fields l) = Fields <$> mapM (conv cp) l
-
-instance DConvertible T.FieldInfo FieldInfo where
-  conv cp T.FieldInfo {..} = do
-    fName <- conv cp fNameIndex
-    fDesc <- conv cp fDescIndex
-    fAttrs' <- conv cp fAttrs
-    return
-      FieldInfo
-        { fAccessFlags = fAccessFlags
-        , fName = fName
-        , fDesc = fDesc
-        , fAttrs = fAttrs'
-        }
-
-instance DConvertible T.Methods Methods where
-  conv cp (T.Methods l) = Methods <$> mapM (conv cp) l
-
-instance DConvertible T.MethodInfo MethodInfo where
-  conv cp T.MethodInfo {..} = do
-    mName <- conv cp mNameIndex
-    mDesc <- conv cp mDescIndex
-    mAttrs' <- conv cp mAttrs
-    return
-      MethodInfo
-        { mAccessFlags = mAccessFlags
-        , mName = mName
-        , mDesc = mDesc
-        , mAttrs = mAttrs'
-        }
-
-instance DConvertible T.Attributes Attributes where
-  conv cp (T.Attributes l) = Attributes <$> mapM (conv cp) l
 
 instance DConvertible T.AttributeInfo AttributeInfo where
   conv cp (T.AttributeInfo i s) =

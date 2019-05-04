@@ -1,3 +1,5 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module Base
   ( (<&>)
   , ($>)
@@ -6,7 +8,6 @@ module Base
   , (<$->)
   , mapS
   , hexString
-  , throwError
   , ByteString
   , Word8
   , Word16
@@ -16,14 +17,20 @@ module Base
   , Int16
   , Int32
   , Int64
+  , Convertible(..)
+  , MonadError(..)
   ) where
 
-import           Control.Monad.Except (throwError)
+import           Control.Monad.Except (MonadError(..))
 import           Data.ByteString.Lazy (ByteString)
 import           Data.Functor         (($>), (<&>))
 import           Data.Int             (Int16, Int32, Int64, Int8)
 import           Data.Word            (Word16, Word32, Word64, Word8)
 import           Numeric              (showHex)
+
+-- | Given context c and var a, convert to type b under monad error with e
+class Convertible c e a b where
+  convert :: MonadError e m => c -> a -> m b
 
 infixl 4 <$->, <*->, <$$>
 
