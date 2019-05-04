@@ -26,7 +26,7 @@ import           Data.Binary                (encode)
 import qualified Data.Binary.Get            as G
 import           Data.ByteString.Internal   (c2w, w2c)
 import           Data.ByteString.Lazy       (pack)
-import           DData
+import           D1Data
 import           IRData
 import           IR1Data
 import           Text.Megaparsec

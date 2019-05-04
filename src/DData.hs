@@ -11,41 +11,11 @@ with regards to the indices.
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiWayIf        #-}
 {-# LANGUAGE NamedFieldPuns    #-}
+{-# LANGUAGE DataKinds    #-}
+{-# LANGUAGE GADTs    #-}
+{-# LANGUAGE RecordWildCards #-}
 
-module DData
-  ( Index
-  , FieldAccess(..)
-  , AccessInfo(..)
-  , ClassFile(..)
-  , ConstantPool
-  , ConstantPool'(..)
-  , ConstantPoolInfo(..)
-  , CpMethodHandle(..)
-  , Interfaces
-  , Interfaces'(..)
-  , InterfaceInfo(..)
-  , AccessFlag(..)
-  , FieldDescriptor(..)
-  , MethodDescriptor(..)
-  , Fields
-  , Fields'(..)
-  , FieldInfo(..)
-  , Methods
-  , Methods'(..)
-  , MethodInfo(..)
-  , Attributes
-  , Attributes'(..)
-  , AttributeInfo(..)
-  , ExceptionTables
-  , ExceptionTables'(..)
-  , ExceptionTable(..)
-  , NameIndex(..)
-  , ClassIndex(..)
-  , DescIndex(..)
-  , NameAndTypeIndex(..)
-  , StringIndex(..)
-  , RefIndex(..)
-  ) where
+module DData where
 
 import           Base
 import           Data.Bits (Bits, (.&.))
@@ -70,47 +40,14 @@ showList startIndex tag items =
     indexedItem :: Show a => Integer -> a -> String
     indexedItem i v = show i ++ ": " ++ show v
 
-type Index = Word16
-
--- | Points to CONSTANT_Utf8_info
-newtype NameIndex =
-  NameIndex Word16
-  deriving (Show, Eq)
-
--- | Points to CONSTANT_Class_info
-newtype ClassIndex =
-  ClassIndex Word16
-  deriving (Show, Eq)
-
--- | Points to CONSTANT_NameAndType_info
-newtype NameAndTypeIndex =
-  NameAndTypeIndex Word16
-  deriving (Show, Eq)
-
--- | Points to CONSTANT_Utf8_info
-newtype DescIndex =
-  DescIndex Word16
-  deriving (Show, Eq)
-
--- | Points to CONSTANT_Utf8_info
-newtype StringIndex =
-  StringIndex Word16
-  deriving (Show, Eq)
-
--- | Points to one of:
--- * CONSTANT_Fieldref_info
--- * CONSTANT_Methodref_info
--- * CONSTANT_InterfaceMethodref_info
-newtype RefIndex =
-  RefIndex Word16
-  deriving (Show, Eq)
-
 data FieldAccess
   = FPublic
   | FPrivate
   | FProtected
   | FPackagePrivate
   deriving (Show, Eq)
+
+type Index = Word16
 
 class HasAccessFlag a where
   _getAccessFlag :: a -> AccessFlag
@@ -163,41 +100,60 @@ instance AccessInfo AccessFlag where
   isSynthetic (AccessFlag af) = af .?. 0x1000
   isEnum (AccessFlag af) = af .?. 0x4000
 
-data ClassFile = ClassFile
+data DConverter c m classIndex classIndex' nameIndex nameIndex' descIndex descIndex' nameAndTypeIndex nameAndTypeIndex' stringIndex stringIndex' refIndex refIndex' attr attr' where
+  DConverter :: Monad m =>
+    { mapClassIndex :: c -> classIndex -> m classIndex'
+    , mapNameIndex :: c -> nameIndex -> m nameIndex'
+    , mapDescIndex :: c -> descIndex -> m descIndex'
+    , mapNameAndTypeIndex :: c -> nameAndTypeIndex -> m nameAndTypeIndex'
+    , mapStringIndex :: c -> stringIndex -> m stringIndex'
+    , mapRefIndex :: c -> refIndex -> m refIndex'
+    , mapAttr :: c ->  attr -> m attr'
+    } -> DConverter c m classIndex classIndex' nameIndex nameIndex' descIndex descIndex' nameAndTypeIndex nameAndTypeIndex' stringIndex stringIndex' refIndex refIndex' attr attr'
+
+data ClassFile classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex attr = ClassFile
   { minorVersion :: Word16
   , majorVersion :: Word16
-  , constantPool :: ConstantPool
-  , accessFlags  :: AccessFlag
-  , thisClass    :: ClassIndex
-  , superClass   :: ClassIndex
-  , interfaces   :: Interfaces
-  , fields       :: Fields
-  , methods      :: Methods
-  , attrs        :: Attributes
+  , constantPool :: ConstantPool' (ConstantPoolInfo' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex)
+  , accessFlags :: AccessFlag
+  , thisClass :: classIndex
+  , superClass :: classIndex
+  , interfaces :: Interfaces' (InterfaceInfo' classIndex)
+  , fields :: Fields' (FieldInfo' nameIndex descIndex attr)
+  , methods :: Methods' (MethodInfo' nameIndex descIndex attr)
+  , attrs :: Attributes' attr
   } deriving (Show, Eq)
 
-type ConstantPool = ConstantPool' ConstantPoolInfo
+
+classFileConv :: Monad m => DConverter c m classIndex classIndex' nameIndex nameIndex' descIndex descIndex' nameAndTypeIndex nameAndTypeIndex' stringIndex stringIndex' refIndex refIndex' attr attr' -> c -> ClassFile classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex attr -> m (ClassFile classIndex' nameIndex' descIndex' nameAndTypeIndex' stringIndex' refIndex' attr')
+classFileConv conv@DConverter{..} c  ClassFile{..} = ClassFile <$-> minorVersion <*-> majorVersion <*> constantPoolConv conv c constantPool <*-> accessFlags <*> mapClassIndex c thisClass <*> mapClassIndex c superClass <*> interfacesConv conv c interfaces <*> fieldsConv conv c fields <*> methodsConv conv c methods <*> attrsConv conv c attrs
+
 
 newtype ConstantPool' a =
   ConstantPool [a]
   deriving (Eq, Foldable)
+
+
+constantPoolConv :: Monad m => DConverter c m classIndex classIndex' nameIndex nameIndex' descIndex descIndex' nameAndTypeIndex nameAndTypeIndex' stringIndex stringIndex' refIndex refIndex' attr attr' -> c -> ConstantPool' (ConstantPoolInfo' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex) -> m (ConstantPool' (ConstantPoolInfo' classIndex' nameIndex' descIndex' nameAndTypeIndex' stringIndex' refIndex'))
+constantPoolConv conv c (ConstantPool l) = ConstantPool <$> mapM (constantPoolInfoConv conv c) l
+
 
 instance Show a => Show (ConstantPool' a) where
   show (ConstantPool l) = showList (Just 1) (Just "ConstantPool") l
 
 -- | Constant pool info
 -- See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.4
-data ConstantPoolInfo
+data ConstantPoolInfo' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex
   -- class_index
-  = CpClass ClassIndex
+  = CpClass classIndex
   -- class_index, name_and_type_index
-  | CpFieldRef ClassIndex
-               NameAndTypeIndex
-  | CpMethodRef ClassIndex
-                NameAndTypeIndex
-  | CpInterfaceMethodRef ClassIndex
-                         NameAndTypeIndex
-  | CpString StringIndex
+  | CpFieldRef classIndex
+               nameAndTypeIndex
+  | CpMethodRef classIndex
+                nameAndTypeIndex
+  | CpInterfaceMethodRef classIndex
+                         nameAndTypeIndex
+  | CpString stringIndex
   -- bytes
   | CpInteger Int32
   | CpFloat Float
@@ -205,17 +161,34 @@ data ConstantPoolInfo
   | CpLong Int64
   | CpDouble Double
   -- name_index, descriptor_index
-  | CpNameAndType NameIndex
-                  DescIndex
+  | CpNameAndType nameIndex
+                  descIndex
   | CpInfo ByteString
   | CpMethodHandle CpMethodHandle
-                   RefIndex
+                   refIndex
   -- descriptor_index
-  | CpMethodType DescIndex
+  | CpMethodType descIndex
   -- bootstrap_method_attr_index, name_and_type_index
   | CpInvokeDynamic Index
-                    NameAndTypeIndex
+                    nameAndTypeIndex
   deriving (Show, Eq)
+
+constantPoolInfoConv :: Monad m => DConverter c m classIndex classIndex' nameIndex nameIndex' descIndex descIndex' nameAndTypeIndex nameAndTypeIndex' stringIndex stringIndex' refIndex refIndex' attr attr' -> c -> ConstantPoolInfo' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex -> m (ConstantPoolInfo' classIndex' nameIndex' descIndex' nameAndTypeIndex' stringIndex' refIndex')
+constantPoolInfoConv conv@DConverter{..} c  constantPoolInfo = case constantPoolInfo of
+  CpClass ci -> CpClass <$> mapClassIndex c ci
+  CpFieldRef ci nti -> CpFieldRef <$> mapClassIndex c ci <*> mapNameAndTypeIndex c nti
+  CpMethodRef ci nti -> CpMethodRef <$> mapClassIndex c ci <*> mapNameAndTypeIndex c nti
+  CpInterfaceMethodRef ci nti -> CpInterfaceMethodRef <$> mapClassIndex c ci <*> mapNameAndTypeIndex c nti
+  CpString si -> CpString <$> mapStringIndex c si
+  CpInteger i -> pure $ CpInteger i
+  CpFloat f -> pure $ CpFloat f
+  CpLong l -> pure $ CpLong l
+  CpDouble d -> pure $ CpDouble d
+  CpNameAndType ni di -> CpNameAndType <$> mapNameIndex c ni <*> mapDescIndex c di
+  CpInfo s -> pure $ CpInfo s
+  CpMethodHandle mh ri -> CpMethodHandle <$-> mh <*> mapRefIndex c ri
+  CpMethodType di -> CpMethodType <$> mapDescIndex c di
+  CpInvokeDynamic i nti -> CpInvokeDynamic <$-> i <*> mapNameAndTypeIndex c nti
 
 -- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-5.html#jvms-5.4.3.5
 data CpMethodHandle
@@ -247,8 +220,6 @@ newtype AccessFlag =
 instance Show AccessFlag where
   show (AccessFlag f) = "AccessFlag " ++ hexString f
 
-type Interfaces = Interfaces' InterfaceInfo
-
 newtype Interfaces' l =
   Interfaces [l]
   deriving (Eq, Foldable)
@@ -256,30 +227,41 @@ newtype Interfaces' l =
 instance Show a => Show (Interfaces' a) where
   show (Interfaces l) = showList (Just 0) (Just "Interfaces") l
 
-newtype InterfaceInfo =
-  InterfaceInfo ClassIndex
+interfacesConv :: Monad m => DConverter c m classIndex classIndex' nameIndex nameIndex' descIndex descIndex' nameAndTypeIndex nameAndTypeIndex' stringIndex stringIndex' refIndex refIndex' attr attr' -> c -> Interfaces' (InterfaceInfo' classIndex) -> m (Interfaces' (InterfaceInfo' classIndex'))
+interfacesConv conv c (Interfaces l) = Interfaces <$> mapM (interfaceInfoConv conv c) l
+
+newtype InterfaceInfo' classIndex =
+  InterfaceInfo classIndex
   deriving (Show, Eq)
 
-type Fields = Fields' FieldInfo
+interfaceInfoConv :: Monad m => DConverter c m classIndex classIndex' nameIndex nameIndex' descIndex descIndex' nameAndTypeIndex nameAndTypeIndex' stringIndex stringIndex' refIndex refIndex' attr attr' -> c -> InterfaceInfo' classIndex -> m (InterfaceInfo' classIndex')
+interfaceInfoConv DConverter{..} c  (InterfaceInfo i) = InterfaceInfo <$> mapClassIndex c i
 
 newtype Fields' l =
   Fields [l]
   deriving (Eq, Foldable)
 
+fieldsConv :: Monad m => DConverter c m classIndex classIndex' nameIndex nameIndex' descIndex descIndex' nameAndTypeIndex nameAndTypeIndex' stringIndex stringIndex' refIndex refIndex' attr attr' -> c -> Fields' (FieldInfo' nameIndex descIndex attr) -> m (Fields' (FieldInfo' nameIndex' descIndex' attr'))
+fieldsConv conv c (Fields l) = Fields <$> mapM (fieldInfoConv conv c) l
+
 instance Show a => Show (Fields' a) where
   show (Fields l) = showList (Just 0) (Just "Fields") l
 
-data FieldInfo = FieldInfo
+data FieldInfo' nameIndex descIndex attr = FieldInfo
   { fAccessFlags :: AccessFlag
-  , fNameIndex   :: NameIndex
-  , fDescIndex   :: DescIndex
-  , fAttrs       :: Attributes
+  , fnameIndex   :: nameIndex
+  , fdescIndex   :: descIndex
+  , fAttrs       :: Attributes' attr
   } deriving (Show, Eq)
 
-instance HasAccessFlag FieldInfo where
+instance HasAccessFlag (FieldInfo' nameIndex descIndex attr) where
   _getAccessFlag = fAccessFlags
 
-instance AccessInfo FieldInfo
+instance AccessInfo (FieldInfo' nameIndex descIndex attr)
+
+fieldInfoConv :: Monad m => DConverter c m classIndex classIndex' nameIndex nameIndex' descIndex descIndex' nameAndTypeIndex nameAndTypeIndex' stringIndex stringIndex' refIndex refIndex' attr attr' -> c -> FieldInfo' nameIndex descIndex attr -> m (FieldInfo' nameIndex' descIndex' attr')
+fieldInfoConv conv@DConverter{..} c  FieldInfo{..} = FieldInfo <$-> fAccessFlags <*> mapNameIndex c fnameIndex <*> mapDescIndex c fdescIndex <*> attrsConv conv c fAttrs
+
 
 -- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.3.2-200
 -- Aka type
@@ -302,8 +284,6 @@ data MethodDescriptor =
   MethodDescriptor [FieldDescriptor]
                    (Maybe FieldDescriptor)
 
-type Methods = Methods' MethodInfo
-
 newtype Methods' l =
   Methods [l]
   deriving (Eq, Foldable)
@@ -311,23 +291,30 @@ newtype Methods' l =
 instance Show a => Show (Methods' a) where
   show (Methods l) = showList (Just 0) (Just "Methods") l
 
-data MethodInfo = MethodInfo
+methodsConv :: Monad m => DConverter c m classIndex classIndex' nameIndex nameIndex' descIndex descIndex' nameAndTypeIndex nameAndTypeIndex' stringIndex stringIndex' refIndex refIndex' attr attr' -> c -> Methods' (MethodInfo' nameIndex descIndex attr) -> m (Methods' (MethodInfo' nameIndex' descIndex' attr'))
+methodsConv conv c (Methods l) = Methods <$> mapM (methodInfoConv conv c) l
+
+data MethodInfo' nameIndex descIndex attr = MethodInfo
   { mAccessFlags :: AccessFlag
-  , mNameIndex   :: NameIndex
-  , mDescIndex   :: DescIndex
-  , mAttrs       :: Attributes
+  , mnameIndex   :: nameIndex
+  , mdescIndex   :: descIndex
+  , mAttrs       :: Attributes' attr
   } deriving (Show, Eq)
 
-instance HasAccessFlag MethodInfo where
+methodInfoConv :: Monad m => DConverter c m classIndex classIndex' nameIndex nameIndex' descIndex descIndex' nameAndTypeIndex nameAndTypeIndex' stringIndex stringIndex' refIndex refIndex' attr attr' -> c -> MethodInfo' nameIndex descIndex attr -> m (MethodInfo' nameIndex' descIndex' attr')
+methodInfoConv conv@DConverter{..} c  MethodInfo{..} = MethodInfo <$-> mAccessFlags <*> mapNameIndex c mnameIndex <*> mapDescIndex c mdescIndex <*> attrsConv conv c mAttrs
+
+instance HasAccessFlag (MethodInfo' nameIndex descIndex attr) where
   _getAccessFlag = mAccessFlags
 
-instance AccessInfo MethodInfo
-
-type Attributes = Attributes' AttributeInfo
+instance AccessInfo (MethodInfo' nameIndex descIndex attr)
 
 newtype Attributes' l =
   Attributes [l]
   deriving (Eq, Foldable)
+
+attrsConv :: Monad m => DConverter c m classIndex classIndex' nameIndex nameIndex' descIndex descIndex' nameAndTypeIndex nameAndTypeIndex' stringIndex stringIndex' refIndex refIndex' attr attr' -> c -> Attributes' attr -> m (Attributes' attr')
+attrsConv DConverter{..} c (Attributes l) = Attributes <$> mapM (mapAttr c) l
 
 instance Show a => Show (Attributes' a) where
   show (Attributes l) = showList (Just 0) (Just "Attributes") l

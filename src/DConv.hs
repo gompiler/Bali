@@ -15,8 +15,8 @@ import           Control.Monad.Except (throwError)
 import           D2Data
 import qualified Data.Binary.Get      as G
 import           Data.Function        ((&))
-import           DData                (Index)
-import qualified DData                as T
+import           D1Data                (Index)
+import qualified D1Data                as T
 import           DParse
 import           IRData
 import           IR1Data

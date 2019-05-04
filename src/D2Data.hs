@@ -40,7 +40,7 @@ module D2Data
 
 import           Base
 import           Data.Int (Int64)
-import           DData    (AccessFlag (..), AccessInfo (..), Attributes' (..),
+import           D1Data    (AccessFlag (..), AccessInfo (..), Attributes' (..),
                            ConstantPool' (..), CpMethodHandle (..),
                            ExceptionTable (..), ExceptionTables,
                            ExceptionTables' (..), FieldAccess (..),
