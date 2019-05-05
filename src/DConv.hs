@@ -272,42 +272,23 @@ cpconv cp =
     convInfo :: ConvStage
     convInfo info (Left cpi) =
       case cpi of
-        T.CpClass (T.ClassIndex i) -> Right . CpClass <$> getInfo info i
-        T.CpString (T.StringIndex i) -> Right . CpString <$> getInfo info i
-        T.CpMethodType (T.DescIndex i) ->
-          Right . CpMethodType <$> getInfo info i
-        T.CpNameAndType (T.NameIndex name) (T.DescIndex desc) ->
-          Right <$> (CpNameAndType <$> getInfo info name <*> getInfo info desc)
-        _ -> return $ Left cpi
+        T.CpClass _         -> Right <$> convert info cpi
+        T.CpString _        -> Right <$> convert info cpi
+        T.CpMethodType _    -> Right <$> convert info cpi
+        T.CpNameAndType _ _ -> Right <$> convert info cpi
+        _                   -> return $ Left cpi
     convInfo _ cpi = return cpi
     -- | Stage 2: Extract name and type data
     convNameAndType :: ConvStage
     convNameAndType info (Left cpi) =
       case cpi of
-        T.CpFieldRef i1 i2 ->
-          Right <$> (CpFieldRef <$> convert info i1 <*> convert info i2)
-        T.CpMethodRef i1 i2 ->
-          Right <$> (CpMethodRef <$> convert info i1 <*> convert info i2)
-        T.CpInterfaceMethodRef i1 i2 ->
-          Right <$>
-          (CpInterfaceMethodRef <$> convert info i1 <*> convert info i2)
-        _ -> return $ Left cpi
+        T.CpFieldRef _ _           -> Right <$> convert info cpi
+        T.CpMethodRef _ _          -> Right <$> convert info cpi
+        T.CpInterfaceMethodRef _ _ -> Right <$> convert info cpi
+        _                          -> return $ Left cpi
     convNameAndType _ cpi = return cpi
     -- | Stage 3: Extract method handle
     convMethodHandle :: ConvStage
-    convMethodHandle info (Left (T.CpMethodHandle mh (T.RefIndex i))) =
-      Right . CpMethodHandle mh <$> handleRef info i
-      where
-        handleRef :: GetConvInfo RefInfo
-        handleRef =
-          case mh of
-            T.CpmGetField         -> getFieldRef
-            T.CpmGetStatic        -> getFieldRef
-            T.CpmPutField         -> getFieldRef
-            T.CpmPutStatic        -> getFieldRef
-            T.CpmInvokeVirtual    -> getMethodRef
-            T.CpmInvokeStatic     -> getMethodRef
-            T.CpmInvokeSpecial    -> getMethodRef
-            T.CpmInvokeInterface  -> getInterfaceMethodRef
-            T.CpmNewInvokeSpecial -> getMethodRef
+    convMethodHandle info (Left cpi@(T.CpMethodHandle _ _)) =
+      Right <$> convert info cpi
     convMethodHandle _ cpi = return cpi
