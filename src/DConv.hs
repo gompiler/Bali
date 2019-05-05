@@ -88,11 +88,11 @@ instance Show ConvError where
   show err =
     case err of
       BadConstantPoolConversion cp tag i info ->
-        "Bad constant pool info at index " ++
+        "Bad constant pool conversion at index " ++
         show i ++
         ": expected " ++ show tag ++ " but got " ++ show info ++ "\n" ++ show cp
       BadConstantPoolAccess cp tag i info ->
-        "Bad constant pool info at index " ++
+        "Bad constant pool access at index " ++
         show i ++
         ": expected " ++ show tag ++ " but got " ++ show info ++ "\n" ++ show cp
       ParseError s -> errorBundlePretty s
@@ -274,8 +274,8 @@ cpconv cp =
       case cpi of
         T.CpClass _         -> Right <$> convert info cpi
         T.CpString _        -> Right <$> convert info cpi
-        T.CpMethodType _    -> Right <$> convert info cpi
         T.CpNameAndType _ _ -> Right <$> convert info cpi
+        T.CpMethodType _    -> Right <$> convert info cpi
         _                   -> return $ Left cpi
     convInfo _ cpi = return cpi
     -- | Stage 2: Extract name and type data
@@ -285,6 +285,7 @@ cpconv cp =
         T.CpFieldRef _ _           -> Right <$> convert info cpi
         T.CpMethodRef _ _          -> Right <$> convert info cpi
         T.CpInterfaceMethodRef _ _ -> Right <$> convert info cpi
+        T.CpInvokeDynamic _ _      -> Right <$> convert info cpi
         _                          -> return $ Left cpi
     convNameAndType _ cpi = return cpi
     -- | Stage 3: Extract method handle

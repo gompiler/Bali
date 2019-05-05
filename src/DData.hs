@@ -149,7 +149,7 @@ instance Show a => Show (ConstantPool' a) where
 -- See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.4
 data ConstantPoolInfo' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex
   -- class_index
-  = CpClass classIndex
+  = CpClass nameIndex
   -- class_index, name_and_type_index
   | CpFieldRef classIndex
                nameAndTypeIndex
