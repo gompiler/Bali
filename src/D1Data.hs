@@ -13,6 +13,7 @@ module D1Data
   , DescIndex(..)
   , StringIndex(..)
   , RefIndex(..)
+  , AttrIndex(..)
   , ClassFile
   , ConstantPool
   , ConstantPoolInfo
@@ -55,6 +56,11 @@ newtype StringIndex =
   StringIndex Word16
   deriving (Show, Eq)
 
+-- | Points to valid index in bootstrap_methods attribute
+newtype AttrIndex =
+  AttrIndex Word16
+  deriving (Show, Eq)
+
 -- | Points to one of:
 -- * CONSTANT_Fieldref_info
 -- * CONSTANT_Methodref_info
@@ -64,12 +70,12 @@ newtype RefIndex =
   deriving (Show, Eq)
 
 type ClassFile
-   = ClassFile' ClassIndex NameIndex DescIndex NameAndTypeIndex StringIndex RefIndex AttributeInfo
+   = ClassFile' ClassIndex NameIndex DescIndex NameAndTypeIndex StringIndex RefIndex AttrIndex AttributeInfo
 
 type ConstantPool = ConstantPool' ConstantPoolInfo
 
 type ConstantPoolInfo
-   = ConstantPoolInfo' ClassIndex NameIndex DescIndex NameAndTypeIndex StringIndex RefIndex
+   = ConstantPoolInfo' ClassIndex NameIndex DescIndex NameAndTypeIndex StringIndex RefIndex AttrIndex
 
 type Interfaces = Interfaces' InterfaceInfo
 

@@ -2,10 +2,6 @@
 Instruction set for jvm operations
 See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-6.html#jvms-6.5
 -}
-{-# LANGUAGE DeriveFoldable       #-}
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-
 module IR1Data where
 
 import           IRData
@@ -37,6 +33,10 @@ newtype IntShort =
   IntShort Int16
   deriving (Show, Eq)
 
+newtype Count =
+  Count Word8
+  deriving (Show, Eq)
+
 data ArrayType
   = AtBool
   | AtChar
@@ -50,15 +50,5 @@ data ArrayType
 
 type Instructions = Instructions' Instruction
 
-data InstructionApplicative index index' indexw indexw' label label' labelw labelw' intByte intByte' intShort intShort' arrayType arrayType' = InstructionApplicative
-  { mapIndex     :: index -> index'
-  , mapIndexw    :: indexw -> indexw'
-  , mapLabel     :: label -> label'
-  , mapLabelw    :: labelw -> labelw'
-  , mapIntByte   :: intByte -> intByte'
-  , mapIntShort  :: intShort -> intShort'
-  , mapArrayType :: arrayType -> arrayType'
-  }
-
 type Instruction
-   = Instruction' IRIndex IRIndexw IRLabel IRLabelw IntByte IntShort ArrayType
+   = Instruction' IRIndex IRIndexw IRLabel IRLabelw IntByte IntShort ArrayType Count

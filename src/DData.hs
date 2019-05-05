@@ -24,6 +24,8 @@ import           Data.Bits (Bits, (.&.))
 import           Data.List (intercalate)
 import           Prelude   hiding (showList)
 
+type Index = Word16
+
 showList :: Show a => Maybe Integer -> Maybe String -> [a] -> String
 showList startIndex tag items =
   case tag of
@@ -48,8 +50,6 @@ data FieldAccess
   | FProtected
   | FPackagePrivate
   deriving (Show, Eq)
-
-type Index = Word16
 
 class HasAccessFlag a where
   _getAccessFlag :: a -> AccessFlag
@@ -102,10 +102,10 @@ instance AccessInfo AccessFlag where
   isSynthetic (AccessFlag af) = af .?. 0x1000
   isEnum (AccessFlag af) = af .?. 0x4000
 
-data ClassFile' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex attr = ClassFile
+data ClassFile' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex attrIndex attr = ClassFile
   { minorVersion :: Word16
   , majorVersion :: Word16
-  , constantPool :: ConstantPool' (ConstantPoolInfo' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex)
+  , constantPool :: ConstantPool' (ConstantPoolInfo' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex attrIndex)
   , accessFlag :: AccessFlag
   , thisClass :: classIndex
   , superClass :: classIndex
@@ -121,9 +121,10 @@ instance ( Convertible c e classIndex classIndex'
          , Convertible c e nameAndTypeIndex nameAndTypeIndex'
          , Convertible c e stringIndex stringIndex'
          , Convertible c e (CpMethodHandle, refIndex) refIndex'
+         , Convertible c e attrIndex attrIndex'
          , Convertible c e attr attr'
          ) =>
-         Convertible c e (ClassFile' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex attr) (ClassFile' classIndex' nameIndex' descIndex' nameAndTypeIndex' stringIndex' refIndex' attr') where
+         Convertible c e (ClassFile' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex attrIndex attr) (ClassFile' classIndex' nameIndex' descIndex' nameAndTypeIndex' stringIndex' refIndex' attrIndex' attr') where
   convert c ClassFile {..} =
     ClassFile <$-> minorVersion <*-> majorVersion <*>
     convert c constantPool <*-> accessFlag <*>
@@ -147,7 +148,7 @@ instance Show a => Show (ConstantPool' a) where
 
 -- | Constant pool info
 -- See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.4
-data ConstantPoolInfo' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex
+data ConstantPoolInfo' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex attrIndex
   -- class_index
   = CpClass nameIndex
   -- class_index, name_and_type_index
@@ -173,7 +174,7 @@ data ConstantPoolInfo' classIndex nameIndex descIndex nameAndTypeIndex stringInd
   -- descriptor_index
   | CpMethodType descIndex
   -- bootstrap_method_attr_index, name_and_type_index
-  | CpInvokeDynamic Index
+  | CpInvokeDynamic attrIndex
                     nameAndTypeIndex
   deriving (Show, Eq)
 
@@ -183,8 +184,9 @@ instance ( Convertible c e classIndex classIndex'
          , Convertible c e nameAndTypeIndex nameAndTypeIndex'
          , Convertible c e stringIndex stringIndex'
          , Convertible c e (CpMethodHandle, refIndex) refIndex'
+         , Convertible c e attrIndex attrIndex'
          ) =>
-         Convertible c e (ConstantPoolInfo' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex) (ConstantPoolInfo' classIndex' nameIndex' descIndex' nameAndTypeIndex' stringIndex' refIndex') where
+         Convertible c e (ConstantPoolInfo' classIndex nameIndex descIndex nameAndTypeIndex stringIndex refIndex attrIndex) (ConstantPoolInfo' classIndex' nameIndex' descIndex' nameAndTypeIndex' stringIndex' refIndex' attrIndex') where
   convert c constantPoolInfo =
     case constantPoolInfo of
       CpClass ci -> CpClass <$> convert c ci
@@ -201,7 +203,7 @@ instance ( Convertible c e classIndex classIndex'
       CpInfo s -> pure $ CpInfo s
       CpMethodHandle mh ri -> CpMethodHandle <$-> mh <*> convert c (mh, ri)
       CpMethodType di -> CpMethodType <$> convert c di
-      CpInvokeDynamic i nti -> CpInvokeDynamic <$-> i <*> convert c nti
+      CpInvokeDynamic i nti -> CpInvokeDynamic <$> convert c i <*> convert c nti
 
 -- | See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-5.html#jvms-5.4.3.5
 data CpMethodHandle

@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE RecordWildCards      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module ShowJ
   ( ShowJ(..)
@@ -11,12 +12,13 @@ module ShowJ
   , stringJ
   ) where
 
+import           Base
 import           D2Data
 import           Data.ByteString.Builder
 import qualified Data.ByteString.Lazy.Char8 as L
 import           Data.List                  (intersperse)
-import           IRData
 import           IR1Data
+import           IRData
 import           System.IO
 
 tabSize :: Int
@@ -163,28 +165,55 @@ instance ShowJ AttributeInfo where
       AConst _ -> byteString ".const"
 
 instance ShowJ StackLimit where
-  showJ (StackLimit i) = word16Dec i
+  showJ (StackLimit i) = showJ i
 
 instance ShowJ LocalLimit where
-  showJ (LocalLimit i) = word16Dec i
+  showJ (LocalLimit i) = showJ i
 
 instance ShowJ IRIndex where
-  showJ (IRIndex i) = word8Dec i
+  showJ (IRIndex i) = showJ i
 
 instance ShowJ IRIndexw where
-  showJ (IRIndexw i) = word16Dec i
+  showJ (IRIndexw i) = showJ i
 
 instance ShowJ IntByte where
-  showJ (IntByte i) = int8Dec i
+  showJ (IntByte i) = showJ i
 
 instance ShowJ IntShort where
-  showJ (IntShort i) = int16Dec i
+  showJ (IntShort i) = showJ i
+
+instance ShowJ Count where
+  showJ (Count i) = showJ i
 
 instance ShowJ IRLabel where
-  showJ (IRLabel i) = word16Dec i
+  showJ (IRLabel i) = showJ i
 
 instance ShowJ IRLabelw where
-  showJ (IRLabelw i) = word32Dec i
+  showJ (IRLabelw i) = showJ i
+
+instance ShowJ Word8 where
+  showJ = word8Dec
+
+instance ShowJ Word16 where
+  showJ = word16Dec
+
+instance ShowJ Word32 where
+  showJ = word32Dec
+
+instance ShowJ Word64 where
+  showJ = word64Dec
+
+instance ShowJ Int8 where
+  showJ = int8Dec
+
+instance ShowJ Int16 where
+  showJ = int16Dec
+
+instance ShowJ Int32 where
+  showJ = int32Dec
+
+instance ShowJ Int64 where
+  showJ = int64Dec
 
 instance ShowJ ArrayType where
   showJ at =

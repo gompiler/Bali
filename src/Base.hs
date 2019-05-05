@@ -35,6 +35,9 @@ class Convertible c e a b
   where
   convert :: c -> a -> Either e b -- todo see if it's worth loosening to MonadError
 
+instance Convertible c e a a where
+  convert _ = pure
+
 infixl 4 <$->, <*->, <$$>
 
 -- | Handles nested monads

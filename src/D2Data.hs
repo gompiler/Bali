@@ -2,15 +2,13 @@
 Data mapping for Java class data
 See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html
 -}
-{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards       #-}
 
 module D2Data
   ( NameAndTypeInfo(..)
   , RefInfo(..)
+  , AttrIndex(..)
   , AttributeInfoKind(..)
   , StackLimit(..)
   , LocalLimit(..)
@@ -30,21 +28,22 @@ module D2Data
   ) where
 
 import           Base
-import           Data.Int (Int64)
+import           D1Data  (AttrIndex (..))
 import           DData
-import           GHC.Int  (Int32)
 import           IR1Data
 import           IRData
 
 type TODO = ()
 
+-- TODO replace AttrIndex usage
 type ClassFile
-   = ClassFile' ByteString ByteString ByteString NameAndTypeInfo ByteString RefInfo AttributeInfo
+   = ClassFile' ByteString ByteString ByteString NameAndTypeInfo ByteString RefInfo AttrIndex AttributeInfo
 
 type ConstantPool = ConstantPool' ConstantPoolInfo
 
+-- TODO replace AttrIndex usage
 type ConstantPoolInfo
-   = ConstantPoolInfo' ByteString ByteString ByteString NameAndTypeInfo ByteString RefInfo
+   = ConstantPoolInfo' ByteString ByteString ByteString NameAndTypeInfo ByteString RefInfo AttrIndex
 
 type Interfaces = Interfaces' InterfaceInfo
 
