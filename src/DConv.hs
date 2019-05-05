@@ -18,7 +18,6 @@ import qualified Data.Binary.Get      as G
 import           Data.Function        ((&))
 import           DParse
 import           IR1Data
-import           IRData
 import           Text.Megaparsec
 
 data ConvError
@@ -166,8 +165,6 @@ type Info = ConstantPool' ConvInfo
 type ConvStage = Info -> ConvInfo -> DConv ConvInfo
 
 type GetInfo c a = ConstantPool' c -> Index -> DConv a
-
-type GetConvInfo a = GetInfo ConvInfo a
 
 -- | Helper functions to access constant pools
 -- Note that regardless of the original pool, accessors are done with the non indexed info variants

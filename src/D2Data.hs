@@ -31,9 +31,6 @@ import           Base
 import           D1Data  (AttrIndex (..))
 import           DData
 import           IR1Data
-import           IRData
-
-type TODO = ()
 
 -- TODO replace AttrIndex usage
 type ClassFile

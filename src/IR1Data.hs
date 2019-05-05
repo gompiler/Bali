@@ -5,9 +5,7 @@ See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-6.html#jvms-6.5
 module IR1Data where
 
 import           IRData
-
 import           Base
-import           Data.List (intercalate)
 
 newtype IRIndex =
   IRIndex Word8
