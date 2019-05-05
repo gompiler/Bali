@@ -13,10 +13,6 @@ module DParse
   , Parser
   , DParse(..)
   , DParseError
-  , num1
-  , num2
-  , num4
-  , num8
   ) where
 
 import           Base
@@ -26,8 +22,9 @@ import           Data.Binary                (encode)
 import qualified Data.Binary.Get            as G
 import           Data.ByteString.Internal   (c2w, w2c)
 import           Data.ByteString.Lazy       (pack)
-import           DData
-import           Instructions
+import           D1Data
+import           IRData
+import           IR1Data
 import           Text.Megaparsec
 import qualified Text.Megaparsec.Byte.Lexer as L
 
@@ -38,10 +35,10 @@ type Parser a = Parser' DParseError a
 type DParser = Parser ClassFile
 
 data DParseError
-  = InvalidConstantPoolTag Int8
-  | InvalidRefKind Int8
+  = InvalidConstantPoolTag Word8
+  | InvalidRefKind Word8
   | InvalidFieldDescriptor Char
-  | InvalidArrayType Int8
+  | InvalidArrayType Word8
   | InvalidOpCode Word8
   | Generic String
   deriving (Show, Eq, Ord)
@@ -61,17 +58,17 @@ class DParse a where
   dparse = dparse' <* eof
   dparse' :: Parser a
 
-dparseM :: Parser Int -> Parser a -> Parser [a]
+dparseM :: Integral n => Parser n -> Parser a -> Parser [a]
 dparseM counter parser = do
   c <- counter
-  replicateM c parser
+  replicateM (fromIntegral c) parser
 
 dparse2M :: DParse a => String -> Parser [a]
-dparse2M tag = dparseM (num2 $ tag ++ " count") dparse'
+dparse2M tag = dparseM (u2 $ tag ++ " count") dparse'
 
 instance DParse ClassFile where
   dparse' =
-    ClassFile <$ magic <*> num2 "minor version" <*> num2 "major version" <*>
+    ClassFile <$ magic <*> u2 "minor version" <*> u2 "major version" <*>
     dparse' <*>
     dparse' <*>
     (dparse' <?> "this class") <*>
@@ -95,9 +92,9 @@ instance DParse ConstantPool where
     return $ ConstantPool info
 
 instance DParse ConstantPoolInfo where
-  dparse' = info =<< num1 "constant pool info"
+  dparse' = info =<< u1 "constant pool info"
     where
-      info :: Int8 -> Parser ConstantPoolInfo
+      info :: Word8 -> Parser ConstantPoolInfo
       info 7 = CpClass <$> dparse'
       info 9 = CpFieldRef <$> dparse' <*> dparse'
       info 10 = CpMethodRef <$> dparse' <*> dparse'
@@ -116,7 +113,7 @@ instance DParse ConstantPoolInfo where
         CpMethodHandle <$> (refKind =<< num1 "reference kind") <*> dparse'
           -- Note that the reference kind should actually be parsed first
         where
-          refKind :: Int8 -> Parser CpMethodHandle
+          refKind :: Word8 -> Parser CpMethodHandle
           refKind kind =
             case kind of
               1 -> pure CpmGetField
@@ -131,26 +128,29 @@ instance DParse ConstantPoolInfo where
               _ -> customFailure $ InvalidRefKind kind
       info 16 = CpMethodType <$> dparse'
       info 18 =
-        CpInvokeDynamic <$> num2 "bootstrap method attr index" <*> dparse'
+        CpInvokeDynamic <$> dparse' <*> dparse'
       info i = customFailure $ InvalidConstantPoolTag i
 
 instance DParse NameIndex where
-  dparse' = NameIndex <$> b2 "name index"
+  dparse' = NameIndex <$> u2 "name index"
 
 instance DParse ClassIndex where
-  dparse' = ClassIndex <$> b2 "class index"
+  dparse' = ClassIndex <$> u2 "class index"
 
 instance DParse NameAndTypeIndex where
-  dparse' = NameAndTypeIndex <$> b2 "name and type index"
+  dparse' = NameAndTypeIndex <$> u2 "name and type index"
 
 instance DParse DescIndex where
-  dparse' = DescIndex <$> b2 "desc index"
+  dparse' = DescIndex <$> u2 "desc index"
 
 instance DParse StringIndex where
-  dparse' = StringIndex <$> b2 "string index"
+  dparse' = StringIndex <$> u2 "string index"
 
 instance DParse RefIndex where
-  dparse' = RefIndex <$> b2 "reference index"
+  dparse' = RefIndex <$> u2 "reference index"
+
+instance DParse AttrIndex where
+  dparse' = AttrIndex <$> u2 "attr index"
 
 instance DParse Interfaces where
   dparse' = Interfaces <$> dparse2M "interfaces"
@@ -241,22 +241,25 @@ instance DParse Instructions where
     return $ Instructions instrs
 
 instance DParse IRIndex where
-  dparse' = IRIndex <$> b1 "index"
+  dparse' = IRIndex <$> u1 "index"
 
 instance DParse IRIndexw where
-  dparse' = IRIndexw <$> b2 "index 2"
+  dparse' = IRIndexw <$> u2 "index 2"
 
 instance DParse IRLabel where
-  dparse' = IRLabel <$> b2 "label"
+  dparse' = IRLabel <$> u2 "label"
 
 instance DParse IRLabelw where
-  dparse' = IRLabelw <$> b4 "labelw"
+  dparse' = IRLabelw <$> u4 "labelw"
 
 instance DParse IntByte where
   dparse' = IntByte <$> num1 "int byte"
 
 instance DParse IntShort where
   dparse' = IntShort <$> num2 "int short"
+
+instance DParse Count where
+  dparse' = Count <$> num2 "count"
 
 instance DParse Instruction where
   dparse' = instr =<< anySingle
@@ -476,31 +479,31 @@ instance DParse ExceptionTable where
     num2 "catch pointer"
 
 instance DParse D2.StackLimit where
-  dparse' = D2.StackLimit <$> b2 "max stack"
+  dparse' = D2.StackLimit <$> u2 "max stack"
 
 instance DParse D2.LocalLimit where
-  dparse' = D2.LocalLimit <$> b2 "max local"
+  dparse' = D2.LocalLimit <$> u2 "max local"
 
-b1 :: (Ord e) => String -> Parser' e Word8
-b1 err = anySingle <?> err
+u1 :: (Ord e) => String -> Parser' e Word8
+u1 err = anySingle <?> err
 
-b2 :: (Ord e) => String -> Parser' e Word16
-b2 err = G.runGet G.getWord16be <$> takeP (Just err) 2
+u2 :: (Ord e) => String -> Parser' e Word16
+u2 err = G.runGet G.getWord16be <$> takeP (Just err) 2
 
-b4 :: (Ord e) => String -> Parser' e Word32
-b4 err = G.runGet G.getWord32be <$> takeP (Just err) 4
+u4 :: (Ord e) => String -> Parser' e Word32
+u4 err = G.runGet G.getWord32be <$> takeP (Just err) 4
 
-b8 :: (Ord e) => String -> Parser' e Word64
-b8 err = G.runGet G.getWord64be <$> takeP (Just err) 8
+u8 :: (Ord e) => String -> Parser' e Word64
+u8 err = G.runGet G.getWord64be <$> takeP (Just err) 8
 
 num1 :: (Ord e, Num a) => String -> Parser' e a
-num1 err = fromIntegral <$> b1 err
+num1 err = fromIntegral <$> u1 err
 
 num2 :: (Ord e, Num a) => String -> Parser' e a
-num2 err = fromIntegral <$> b2 err
+num2 err = fromIntegral <$> u2 err
 
 num4 :: (Ord e, Num a) => String -> Parser' e a
-num4 err = fromIntegral <$> b4 err
+num4 err = fromIntegral <$> u4 err
 
 num8 :: (Ord e, Num a) => String -> Parser' e a
-num8 err = fromIntegral <$> b8 err
+num8 err = fromIntegral <$> u8 err

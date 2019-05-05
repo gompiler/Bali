@@ -12,13 +12,12 @@ module DConv
 import           Base
 import           Control.Monad        (zipWithM)
 import           Control.Monad.Except (throwError)
+import qualified D1Data               as T
 import           D2Data
 import qualified Data.Binary.Get      as G
 import           Data.Function        ((&))
-import           DData                (Index)
-import qualified DData                as T
 import           DParse
-import           Instructions
+import           IR1Data
 import           Text.Megaparsec
 
 data ConvError
@@ -34,6 +33,47 @@ data ConvError
   | Generic String
   deriving (Eq)
 
+dconv :: T.ClassFile -> DConv ClassFile
+dconv classFile@T.ClassFile {constantPool} = do
+  cp <- cpconv constantPool
+  convert cp classFile
+
+instance ConstantPoolGet c =>
+         Convertible (ConstantPool' c) ConvError T.ClassIndex ByteString where
+  convert cp (T.ClassIndex i) = getClass cp i
+
+instance ConstantPoolGet c =>
+         Convertible (ConstantPool' c) ConvError T.NameIndex ByteString where
+  convert cp (T.NameIndex i) = getInfo cp i
+
+instance ConstantPoolGet c =>
+         Convertible (ConstantPool' c) ConvError T.DescIndex ByteString where
+  convert cp (T.DescIndex i) = getInfo cp i
+
+instance ConstantPoolGet c =>
+         Convertible (ConstantPool' c) ConvError T.StringIndex ByteString where
+  convert cp (T.StringIndex i) = getInfo cp i
+
+instance ConstantPoolGet c =>
+         Convertible (ConstantPool' c) ConvError (CpMethodHandle, T.RefIndex) RefInfo where
+  convert cp (mh, T.RefIndex i) = handleRef cp i
+    where
+      handleRef =
+        case mh of
+          T.CpmGetField         -> getFieldRef
+          T.CpmGetStatic        -> getFieldRef
+          T.CpmPutField         -> getFieldRef
+          T.CpmPutStatic        -> getFieldRef
+          T.CpmInvokeVirtual    -> getMethodRef
+          T.CpmInvokeStatic     -> getMethodRef
+          T.CpmInvokeSpecial    -> getMethodRef
+          T.CpmInvokeInterface  -> getInterfaceMethodRef
+          T.CpmNewInvokeSpecial -> getMethodRef
+
+instance ConstantPoolGet c =>
+         Convertible (ConstantPool' c) ConvError T.NameAndTypeIndex NameAndTypeInfo where
+  convert cp (T.NameAndTypeIndex i) = getNameAndType cp i
+
 instance Ord ConvError
   -- Just to satisfy ShowErrorComponent
   -- We don't care what order the errors are displayed
@@ -48,11 +88,11 @@ instance Show ConvError where
   show err =
     case err of
       BadConstantPoolConversion cp tag i info ->
-        "Bad constant pool info at index " ++
+        "Bad constant pool conversion at index " ++
         show i ++
         ": expected " ++ show tag ++ " but got " ++ show info ++ "\n" ++ show cp
       BadConstantPoolAccess cp tag i info ->
-        "Bad constant pool info at index " ++
+        "Bad constant pool access at index " ++
         show i ++
         ": expected " ++ show tag ++ " but got " ++ show info ++ "\n" ++ show cp
       ParseError s -> errorBundlePretty s
@@ -60,90 +100,12 @@ instance Show ConvError where
 
 type DConv = Either ConvError
 
-dconv :: T.ClassFile -> DConv ClassFile
-dconv T.ClassFile {..} = do
-  cp <- cpconv constantPool
-  ClassFile <$-> minorVersion <*-> majorVersion <*-> cp <*-> accessFlags <*>
-    conv cp thisClass <*>
-    conv cp superClass <*>
-    conv cp interfaces <*>
-    conv cp fields <*>
-    conv cp methods <*>
-    conv cp attrs
-
-class DConvertible a b where
-  conv :: ConstantPool -> a -> DConv b
-
-instance DConvertible a a where
-  conv _ = pure
-
---instance DParse a => DConvertible ByteString a where
---  conv _ = either (Left . ParseError) Right . parse dparse' ""
-instance DConvertible Index ByteString where
-  conv = getInfo
-
-instance DConvertible T.ClassIndex ByteString where
-  conv cp (T.ClassIndex i) = getClass cp i
-
-instance DConvertible T.NameIndex ByteString where
-  conv cp (T.NameIndex i) = getInfo cp i
-
-instance DConvertible T.NameAndTypeIndex (ByteString, ByteString) where
-  conv cp (T.NameAndTypeIndex i) = getNameAndType cp i
-
-instance DConvertible T.DescIndex ByteString where
-  conv cp (T.DescIndex i) = getInfo cp i
-
-instance DConvertible T.StringIndex ByteString where
-  conv cp (T.StringIndex i) = getInfo cp i
-
-instance DConvertible T.Interfaces Interfaces where
-  conv cp (T.Interfaces l) = Interfaces <$> mapM (conv cp) l
-
-instance DConvertible T.InterfaceInfo InterfaceInfo where
-  conv cp (T.InterfaceInfo s) = InterfaceInfo <$> conv cp s
-
-instance DConvertible T.Fields Fields where
-  conv cp (T.Fields l) = Fields <$> mapM (conv cp) l
-
-instance DConvertible T.FieldInfo FieldInfo where
-  conv cp T.FieldInfo {..} = do
-    fName <- conv cp fNameIndex
-    fDesc <- conv cp fDescIndex
-    fAttrs' <- conv cp fAttrs
-    return
-      FieldInfo
-        { fAccessFlags = fAccessFlags
-        , fName = fName
-        , fDesc = fDesc
-        , fAttrs = fAttrs'
-        }
-
-instance DConvertible T.Methods Methods where
-  conv cp (T.Methods l) = Methods <$> mapM (conv cp) l
-
-instance DConvertible T.MethodInfo MethodInfo where
-  conv cp T.MethodInfo {..} = do
-    mName <- conv cp mNameIndex
-    mDesc <- conv cp mDescIndex
-    mAttrs' <- conv cp mAttrs
-    return
-      MethodInfo
-        { mAccessFlags = mAccessFlags
-        , mName = mName
-        , mDesc = mDesc
-        , mAttrs = mAttrs'
-        }
-
-instance DConvertible T.Attributes Attributes where
-  conv cp (T.Attributes l) = Attributes <$> mapM (conv cp) l
-
-instance DConvertible T.AttributeInfo AttributeInfo where
-  conv cp (T.AttributeInfo i s) =
+instance Convertible ConstantPool ConvError T.AttributeInfo AttributeInfo where
+  convert cp (T.AttributeInfo i s) =
     getInfo cp i >>= \case
       "Code" -> do
         ACodePart {..} <- convParse attrCodeParser
-        cAttrs <- conv cp pAttributes
+        cAttrs <- convert cp pAttributes
         return
           ACode
             { stackLimit = pStackLimit
@@ -204,8 +166,6 @@ type ConvStage = Info -> ConvInfo -> DConv ConvInfo
 
 type GetInfo c a = ConstantPool' c -> Index -> DConv a
 
-type GetConvInfo a = GetInfo ConvInfo a
-
 -- | Helper functions to access constant pools
 -- Note that regardless of the original pool, accessors are done with the non indexed info variants
 -- We provide mappings to the variant, and fallback to an error if it does not exist
@@ -233,33 +193,34 @@ class ConstantPoolGet c where
       (\case
          CpClass s -> Just s
          _ -> Nothing)
-  getNameAndType :: GetInfo c (ByteString, ByteString)
+  getNameAndType :: GetInfo c NameAndTypeInfo
   getNameAndType =
     get
       CpcNameAndType
       (\case
-         CpNameAndType n d -> Just (n, d)
+         CpNameAndType n t ->
+           Just $ NameAndTypeInfo {nameInfo = n, typeInfo = t}
          _ -> Nothing)
   getFieldRef :: GetInfo c RefInfo
   getFieldRef =
     get
       CpcFieldRef
       (\case
-         CpFieldRef ref -> Just ref
+         CpFieldRef c nt -> Just $ refInfo c nt
          _ -> Nothing)
   getMethodRef :: GetInfo c RefInfo
   getMethodRef =
     get
       CpcMethodRef
       (\case
-         CpMethodRef ref -> Just ref
+         CpMethodRef c nt -> Just $ refInfo c nt
          _ -> Nothing)
   getInterfaceMethodRef :: GetInfo c RefInfo
   getInterfaceMethodRef =
     get
       CpcInterfaceMethodRef
       (\case
-         CpInterfaceMethodRef ref -> Just ref
+         CpInterfaceMethodRef c nt -> Just $ refInfo c nt
          _ -> Nothing)
 
 instance ConstantPoolGet ConstantPoolInfo where
@@ -309,48 +270,24 @@ cpconv cp =
     convInfo :: ConvStage
     convInfo info (Left cpi) =
       case cpi of
-        T.CpClass (T.ClassIndex i) -> Right . CpClass <$> getInfo info i
-        T.CpString (T.StringIndex i) -> Right . CpString <$> getInfo info i
-        T.CpMethodType (T.DescIndex i) ->
-          Right . CpMethodType <$> getInfo info i
-        T.CpNameAndType (T.NameIndex name) (T.DescIndex desc) ->
-          Right <$> (CpNameAndType <$> getInfo info name <*> getInfo info desc)
-        _ -> return $ Left cpi
+        T.CpClass _         -> Right <$> convert info cpi
+        T.CpString _        -> Right <$> convert info cpi
+        T.CpNameAndType _ _ -> Right <$> convert info cpi
+        T.CpMethodType _    -> Right <$> convert info cpi
+        _                   -> return $ Left cpi
     convInfo _ cpi = return cpi
     -- | Stage 2: Extract name and type data
     convNameAndType :: ConvStage
     convNameAndType info (Left cpi) =
       case cpi of
-        T.CpFieldRef (T.ClassIndex i1) (T.NameAndTypeIndex i2) ->
-          Right . CpFieldRef <$> convRef i1 i2
-        T.CpMethodRef (T.ClassIndex i1) (T.NameAndTypeIndex i2) ->
-          Right . CpMethodRef <$> convRef i1 i2
-        T.CpInterfaceMethodRef (T.ClassIndex i1) (T.NameAndTypeIndex i2) ->
-          Right . CpInterfaceMethodRef <$> convRef i1 i2
-        _ -> return $ Left cpi
-      where
-        convRef :: Index -> Index -> DConv RefInfo
-        convRef classIndex nameAndTypeIndex = do
-          className <- getClass info classIndex
-          (nameInfo, typeInfo) <- getNameAndType info nameAndTypeIndex
-          return $
-            RefInfo {rClass = className, rName = nameInfo, rInfo = typeInfo}
+        T.CpFieldRef _ _           -> Right <$> convert info cpi
+        T.CpMethodRef _ _          -> Right <$> convert info cpi
+        T.CpInterfaceMethodRef _ _ -> Right <$> convert info cpi
+        T.CpInvokeDynamic _ _      -> Right <$> convert info cpi
+        _                          -> return $ Left cpi
     convNameAndType _ cpi = return cpi
     -- | Stage 3: Extract method handle
     convMethodHandle :: ConvStage
-    convMethodHandle info (Left (T.CpMethodHandle mh (T.RefIndex i))) =
-      Right . CpMethodHandle mh <$> handleRef info i
-      where
-        handleRef :: GetConvInfo RefInfo
-        handleRef =
-          case mh of
-            T.CpmGetField         -> getFieldRef
-            T.CpmGetStatic        -> getFieldRef
-            T.CpmPutField         -> getFieldRef
-            T.CpmPutStatic        -> getFieldRef
-            T.CpmInvokeVirtual    -> getMethodRef
-            T.CpmInvokeStatic     -> getMethodRef
-            T.CpmInvokeSpecial    -> getMethodRef
-            T.CpmInvokeInterface  -> getInterfaceMethodRef
-            T.CpmNewInvokeSpecial -> getMethodRef
+    convMethodHandle info (Left cpi@(T.CpMethodHandle _ _)) =
+      Right <$> convert info cpi
     convMethodHandle _ cpi = return cpi

@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE RecordWildCards      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module ShowJ
   ( ShowJ(..)
@@ -11,11 +12,13 @@ module ShowJ
   , stringJ
   ) where
 
+import           Base
 import           D2Data
 import           Data.ByteString.Builder
 import qualified Data.ByteString.Lazy.Char8 as L
 import           Data.List                  (intersperse)
-import           Instructions
+import           IR1Data
+import           IRData
 import           System.IO
 
 tabSize :: Int
@@ -53,6 +56,9 @@ showJlist' prefix tabCount info =
     then mempty
     else prefix <> showJ' tabCount info
 
+-- | Bytecode show implementation using efficient ByteString builders
+-- showJ is the default builder without any tab prefixes
+-- showJ' will take tab prefixes into account
 class ShowJ a where
   {-# MINIMAL showJ | showJ' #-}
   showJ :: a -> Builder
@@ -70,7 +76,7 @@ instance ShowJ ClassFile where
     _nl <>
     tab <>
     byteString ".class" <>
-    showJ accessFlags <>
+    showJ accessFlag <>
     _sp <>
     showJ thisClass <>
     _nl <>
@@ -125,11 +131,11 @@ instance ShowJ Fields where
 
 instance ShowJ FieldInfo where
   showJ' tabCount FieldInfo {..} =
-    _tab tabCount <> byteString ".field" <> showJ fAccessFlags <> _sp <>
-    showJ fName <>
+    _tab tabCount <> byteString ".field" <> showJ accessFlag <> _sp <>
+    showJ nameIndex <>
     _sp <>
-    showJ fDesc <>
-    showJlist' _nl (tabCount + 1) fAttrs
+    showJ descIndex <>
+    showJlist' _nl (tabCount + 1) attrs
 
 instance ShowJ Methods where
   showJ' tabCount (Methods l) =
@@ -137,43 +143,77 @@ instance ShowJ Methods where
 
 instance ShowJ MethodInfo where
   showJ' tabCount MethodInfo {..} =
-    _tab tabCount <> byteString ".method" <> showJ mAccessFlags <> _sp <>
-    showJ mName <>
+    _tab tabCount <> byteString ".method" <> showJ accessFlag <> _sp <>
+    showJ nameIndex <>
     byteString " : " <>
-    showJ mDesc <>
-    showJlist' _nl (tabCount + 1) mAttrs
+    showJ descIndex <>
+    showJlist' _nl (tabCount + 1) attrs
 
 instance ShowJ Attributes where
   showJ' tabCount (Attributes l) =
     mconcat $ intersperse _nl $ map (showJ' tabCount) l
 
 instance ShowJ AttributeInfo where
-  showJ attributeInfo =
+  showJ' tabCount attributeInfo =
+    _tab tabCount <>
     case attributeInfo of
-      ACode {..} -> byteString ".code"
-      AConst _   -> byteString ".const"
+      ACode {..} ->
+        byteString ".code stack " <> showJ stackLimit <> byteString " locals " <>
+        showJ localLimit <>
+        showJlist' _nl (tabCount + 1) code <> -- TODO add exception tables
+        showJlist' (_nl <> _nl) (tabCount + 1) cAttrs
+      AConst _ -> byteString ".const"
 
-instance ShowJ Instructions where
-  showJ' tabCount (Instructions l) =
-    mconcat $ intersperse _nl $ map (showJ' tabCount) l
+instance ShowJ StackLimit where
+  showJ (StackLimit i) = showJ i
+
+instance ShowJ LocalLimit where
+  showJ (LocalLimit i) = showJ i
 
 instance ShowJ IRIndex where
-  showJ (IRIndex i) = word8Dec i
+  showJ (IRIndex i) = showJ i
 
 instance ShowJ IRIndexw where
-  showJ (IRIndexw i) = word16Dec i
+  showJ (IRIndexw i) = showJ i
 
 instance ShowJ IntByte where
-  showJ (IntByte i) = int8Dec i
+  showJ (IntByte i) = showJ i
 
 instance ShowJ IntShort where
-  showJ (IntShort i) = int16Dec i
+  showJ (IntShort i) = showJ i
+
+instance ShowJ Count where
+  showJ (Count i) = showJ i
 
 instance ShowJ IRLabel where
-  showJ (IRLabel i) = word16Dec i
+  showJ (IRLabel i) = showJ i
 
 instance ShowJ IRLabelw where
-  showJ (IRLabelw i) = word32Dec i
+  showJ (IRLabelw i) = showJ i
+
+instance ShowJ Word8 where
+  showJ = word8Dec
+
+instance ShowJ Word16 where
+  showJ = word16Dec
+
+instance ShowJ Word32 where
+  showJ = word32Dec
+
+instance ShowJ Word64 where
+  showJ = word64Dec
+
+instance ShowJ Int8 where
+  showJ = int8Dec
+
+instance ShowJ Int16 where
+  showJ = int16Dec
+
+instance ShowJ Int32 where
+  showJ = int32Dec
+
+instance ShowJ Int64 where
+  showJ = int64Dec
 
 instance ShowJ ArrayType where
   showJ at =
@@ -201,6 +241,10 @@ instance ShowJ FieldDescriptor where
       TShort   -> charUtf8 'S'
       TBool    -> charUtf8 'Z'
       TArray d -> charUtf8 '[' <> showJ d
+
+instance ShowJ Instructions where
+  showJ' tabCount (Instructions l) =
+    mconcat $ intersperse _nl $ map (showJ' tabCount) l
 
 instance ShowJ Instruction where
   showJ inst =
