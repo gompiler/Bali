@@ -5,12 +5,13 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RecordWildCards       #-}
 
-module DConv where
+module DConv
+  ( dconv
+  ) where
 
 import           Base
 import           Control.Monad        (zipWithM)
 import           Control.Monad.Except (throwError)
-import           D1Data               (Index)
 import qualified D1Data               as T
 import           D2Data
 import qualified Data.Binary.Get      as G
