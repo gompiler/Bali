@@ -10,12 +10,12 @@ with regards to the indices.
 {-# LANGUAGE DeriveFoldable        #-}
 {-# LANGUAGE DeriveTraversable     #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE MultiWayIf            #-}
 {-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE RecordWildCards       #-}
-{-# LANGUAGE FlexibleContexts #-}
 
 module DData where
 
@@ -362,8 +362,8 @@ instance Show a => Show (ExceptionTables' a) where
   show (ExceptionTables l) = showList (Just 0) (Just "ExceptionTables") l
 
 data ExceptionTable = ExceptionTable
-  { eStartPc   :: Word16
-  , eEndPc     :: Word16
-  , eHandlerPc :: Word16
-  , eCatchType :: Word16
+  { startPc   :: Word16
+  , endPc     :: Word16
+  , handlerPc :: Word16
+  , catchType :: Word16
   } deriving (Show, Eq)

@@ -136,7 +136,7 @@ instance ShowJ AccessFlag
           else mempty
 
 instance ShowJ FieldAccess where
-  showJ c fa =
+  showJ _ fa =
     case fa of
       FPublic         -> byteString " public"
       FPrivate        -> byteString " private"
@@ -227,28 +227,28 @@ instance ShowJ IRLabelw where
   showJ c (IRLabelw i) = showJ c i
 
 instance ShowJ Word8 where
-  showJ c = word8Dec
+  showJ _ = word8Dec
 
 instance ShowJ Word16 where
-  showJ c = word16Dec
+  showJ _ = word16Dec
 
 instance ShowJ Word32 where
-  showJ c = word32Dec
+  showJ _ = word32Dec
 
 instance ShowJ Word64 where
-  showJ c = word64Dec
+  showJ _ = word64Dec
 
 instance ShowJ Int8 where
-  showJ c = int8Dec
+  showJ _ = int8Dec
 
 instance ShowJ Int16 where
-  showJ c = int16Dec
+  showJ _ = int16Dec
 
 instance ShowJ Int32 where
-  showJ c = int32Dec
+  showJ _ = int32Dec
 
 instance ShowJ Int64 where
-  showJ c = int64Dec
+  showJ _ = int64Dec
 
 instance ShowJ ArrayType where
   showJ c at =
