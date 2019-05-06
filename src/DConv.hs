@@ -1,3 +1,4 @@
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -10,14 +11,13 @@ module DConv
   ) where
 
 import           Base
-import           Control.Monad        (zipWithM)
-import           Control.Monad.Except (throwError)
-import qualified D1Data               as T
+import           Control.Monad              (zipWithM)
+import           Control.Monad.Except       (throwError)
+import qualified D1Data                     as T
 import           D2Data
-import qualified Data.Binary.Get      as G
-import           Data.Function        ((&))
+import           Data.Function              ((&))
+import           DData
 import           DParse
-import           IR1Data
 import           Text.Megaparsec
 
 data ConvError
@@ -34,7 +34,7 @@ data ConvError
   deriving (Eq)
 
 dconv :: T.ClassFile -> DConv ClassFile
-dconv classFile@T.ClassFile {constantPool} = do
+dconv classFile@ClassFile {constantPool} = do
   cp <- cpconv constantPool
   convert cp classFile
 
@@ -55,20 +55,24 @@ instance ConstantPoolGet c =>
   convert cp (T.StringIndex i) = getInfo cp i
 
 instance ConstantPoolGet c =>
+         Convertible (ConstantPool' c) ConvError T.ConstIndex ByteString where
+  convert cp (T.ConstIndex i) = getInfo cp i -- todo update?
+
+instance ConstantPoolGet c =>
          Convertible (ConstantPool' c) ConvError (CpMethodHandle, T.RefIndex) RefInfo where
   convert cp (mh, T.RefIndex i) = handleRef cp i
     where
       handleRef =
         case mh of
-          T.CpmGetField         -> getFieldRef
-          T.CpmGetStatic        -> getFieldRef
-          T.CpmPutField         -> getFieldRef
-          T.CpmPutStatic        -> getFieldRef
-          T.CpmInvokeVirtual    -> getMethodRef
-          T.CpmInvokeStatic     -> getMethodRef
-          T.CpmInvokeSpecial    -> getMethodRef
-          T.CpmInvokeInterface  -> getInterfaceMethodRef
-          T.CpmNewInvokeSpecial -> getMethodRef
+          CpmGetField         -> getFieldRef
+          CpmGetStatic        -> getFieldRef
+          CpmPutField         -> getFieldRef
+          CpmPutStatic        -> getFieldRef
+          CpmInvokeVirtual    -> getMethodRef
+          CpmInvokeStatic     -> getMethodRef
+          CpmInvokeSpecial    -> getMethodRef
+          CpmInvokeInterface  -> getInterfaceMethodRef
+          CpmNewInvokeSpecial -> getMethodRef
 
 instance ConstantPoolGet c =>
          Convertible (ConstantPool' c) ConvError T.NameAndTypeIndex NameAndTypeInfo where
@@ -100,53 +104,33 @@ instance Show ConvError where
 
 type DConv = Either ConvError
 
-instance Convertible ConstantPool ConvError T.AttributeInfo AttributeInfo where
-  convert cp (T.AttributeInfo i s) =
-    getInfo cp i >>= \case
-      "Code" -> do
-        ACodePart {..} <- convParse attrCodeParser
-        attrs <- convert cp pAttributes
-        return
-          ACode
-            { stackLimit = pStackLimit
-            , localLimit = pLocalLimit
-            , code = pCode
-            , exceptionTables = pExceptionTables
-            , attrs = attrs
-            }
-        where attrCodeParser :: Parser ACodePart
-              attrCodeParser = do
-                stackLimit <- dparse'
-                localLimit <- dparse'
-                code <- dparse'
-                exceptionTables <- dparse'
-                attrs <- dparse'
-                return
-                  ACodePart
-                    { pStackLimit = stackLimit
-                    , pLocalLimit = localLimit
-                    , pCode = code
-                    , pExceptionTables = exceptionTables
-                    , pAttributes = attrs
-                    }
-      "ConstantValue" -> AConst <$> getInfo cp (G.runGet G.getWord16be s) -- TODO verify
-      "LineNumberTable" -> ALineNumberTable <$> convParse dparse'
-      tag -> return $ AConst tag
+-- | With just parsing + convertible, only generic attributes will be generated.
+-- To collect all variants, we must first generate the name bytestring, then run it against
+-- an attribute specific parser.
+-- After doing this recursively, we are left with a fully converted attribute info
+instance ConstantPoolGet c =>
+         Convertible (ConstantPool' c) ConvError GenericAttribute AttributeInfo where
+  convert cp attr@(GenericAttribute name s) =
+    case dparseAttribute name of
+      Just parser ->
+        nestedConv =<<
+        convert cp =<< either (Left . ParseError) Right (parse parser "" s)
+      Nothing -> return $ AGeneric attr
+      -- Allows us to apply this conversion once again to nested data
     where
-      convParse :: Parser a -> DConv a
-      convParse parser = either (Left . ParseError) Right $ parse parser "" s
+      nestedConv :: AttributeInfo -> DConv AttributeInfo
+      nestedConv acode@ACode {attrs = Attributes a} = do
+        attrs' <- Attributes <$> mapM genericConv a
+        return $ (acode :: AttributeInfo) {attrs = attrs'}
+      nestedConv a = pure a
+      -- | Extract generic attribute info and attempt to generate the specific data
+      genericConv :: AttributeInfo -> DConv AttributeInfo
+      genericConv (AGeneric g) = convert cp g
+      genericConv a            = pure a
 
--- | Given that the code attribute contains nested attributes,
--- We must convert the first layer using the constant pool,
--- then parse the following layer before we can convert again.
--- This data type serves as an intermediate state
-data ACodePart = ACodePart
-  { pStackLimit      :: StackLimit
-  , pLocalLimit      :: LocalLimit
-  , pCode            :: Instructions
-  , pExceptionTables :: ExceptionTables
-  , pAttributes      :: T.Attributes
-  }
+instance ConstantPoolGet c =>
+         Convertible (ConstantPool' c) ConvError T.GenericAttribute AttributeInfo where
+  convert cp a = convert cp =<< (convert cp a :: DConv GenericAttribute)
 
 data CpCategory
   = CpcClass
@@ -252,12 +236,12 @@ cpconv cp =
         initInfo' :: T.ConstantPoolInfo -> ConvInfo
         initInfo' cpi =
           case cpi of
-            T.CpInteger n -> Right $ CpInteger n
-            T.CpFloat n   -> Right $ CpFloat n
-            T.CpLong n    -> Right $ CpLong n
-            T.CpDouble n  -> Right $ CpDouble n
-            T.CpInfo s    -> Right $ CpInfo s
-            _             -> Left cpi
+            CpInteger n -> Right $ CpInteger n
+            CpFloat n   -> Right $ CpFloat n
+            CpLong n    -> Right $ CpLong n
+            CpDouble n  -> Right $ CpDouble n
+            CpInfo s    -> Right $ CpInfo s
+            _           -> Left cpi
     -- | Convert info back to constant pool
     -- It is expected that all entries are converted (on the right)
     extractInfo :: Info -> DConv ConstantPool
@@ -271,24 +255,24 @@ cpconv cp =
     convInfo :: ConvStage
     convInfo info (Left cpi) =
       case cpi of
-        T.CpClass _         -> Right <$> convert info cpi
-        T.CpString _        -> Right <$> convert info cpi
-        T.CpNameAndType _ _ -> Right <$> convert info cpi
-        T.CpMethodType _    -> Right <$> convert info cpi
-        _                   -> return $ Left cpi
+        CpClass _         -> Right <$> convert info cpi
+        CpString _        -> Right <$> convert info cpi
+        CpNameAndType _ _ -> Right <$> convert info cpi
+        CpMethodType _    -> Right <$> convert info cpi
+        _                 -> return $ Left cpi
     convInfo _ cpi = return cpi
     -- | Stage 2: Extract name and type data
     convNameAndType :: ConvStage
     convNameAndType info (Left cpi) =
       case cpi of
-        T.CpFieldRef _ _           -> Right <$> convert info cpi
-        T.CpMethodRef _ _          -> Right <$> convert info cpi
-        T.CpInterfaceMethodRef _ _ -> Right <$> convert info cpi
-        T.CpInvokeDynamic _ _      -> Right <$> convert info cpi
-        _                          -> return $ Left cpi
+        CpFieldRef _ _           -> Right <$> convert info cpi
+        CpMethodRef _ _          -> Right <$> convert info cpi
+        CpInterfaceMethodRef _ _ -> Right <$> convert info cpi
+        CpInvokeDynamic _ _      -> Right <$> convert info cpi
+        _                        -> return $ Left cpi
     convNameAndType _ cpi = return cpi
     -- | Stage 3: Extract method handle
     convMethodHandle :: ConvStage
-    convMethodHandle info (Left cpi@(T.CpMethodHandle _ _)) =
+    convMethodHandle info (Left cpi@(CpMethodHandle _ _)) =
       Right <$> convert info cpi
     convMethodHandle _ cpi = return cpi

@@ -5,28 +5,7 @@ See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE RecordWildCards       #-}
 
-module D2Data
-  ( NameAndTypeInfo(..)
-  , RefInfo(..)
-  , AttrIndex(..)
-  , StackLimit(..)
-  , LocalLimit(..)
-  , ClassFile
-  , ConstantPool
-  , ConstantPoolInfo
-  , Interfaces
-  , InterfaceInfo
-  , Fields
-  , FieldInfo
-  , Methods
-  , MethodInfo
-  , Attributes
-  , AttributeInfo(..)
-  , LineNumberTable(..)
-  , LineNumberInfo(..)
-  , refInfo
-  , module DData
-  ) where
+module D2Data where
 
 import           Base
 import           D1Data  (AttrIndex (..))
@@ -72,29 +51,11 @@ refInfo :: ByteString -> NameAndTypeInfo -> RefInfo
 refInfo classInfo NameAndTypeInfo {..} =
   RefInfo {classInfo = classInfo, nameInfo = nameInfo, typeInfo = typeInfo}
 
-newtype StackLimit =
-  StackLimit Word16
-  deriving (Show, Eq)
+type AttributeInfo
+   = AttributeInfo' ByteString ByteString ByteString IRIndex IRIndexw IRLabel IRLabelw IntByte IntShort ArrayType Count
 
-newtype LocalLimit =
-  LocalLimit Word16
-  deriving (Show, Eq)
+type GenericAttribute = GenericAttribute' ByteString
 
-data AttributeInfo
-  = ACode { stackLimit      :: StackLimit
-          , localLimit      :: LocalLimit
-          , code            :: Instructions
-          , exceptionTables :: ExceptionTables
-          , attrs           :: Attributes }
-  | AConst ByteString
-  | ALineNumberTable LineNumberTable
-  deriving (Show, Eq)
+type Exceptions = Exceptions' Exception
 
-newtype LineNumberTable =
-  LineNumberTable [LineNumberInfo]
-  deriving (Show, Eq)
-
-data LineNumberInfo = LineNumberInfo
-  { startPc    :: Word16
-  , lineNumber :: Word16
-  } deriving (Show, Eq)
+type Exception = Exception' ByteString

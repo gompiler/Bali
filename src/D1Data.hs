@@ -6,30 +6,11 @@ Note that this represents the first iteration, where we focus on parsing.
 All instances of indices are left as is, and no verification is made
 with regards to the indices.
 -}
-module D1Data
-  ( NameIndex(..)
-  , ClassIndex(..)
-  , NameAndTypeIndex(..)
-  , DescIndex(..)
-  , StringIndex(..)
-  , RefIndex(..)
-  , AttrIndex(..)
-  , ClassFile
-  , ConstantPool
-  , ConstantPoolInfo
-  , Interfaces
-  , InterfaceInfo
-  , Fields
-  , FieldInfo
-  , Methods
-  , MethodInfo
-  , Attributes
-  , AttributeInfo(..)
-  , module DData
-  ) where
+module D1Data where
 
 import           Base
 import           DData
+import           IR1Data
 
 -- | Points to CONSTANT_Utf8_info
 newtype NameIndex =
@@ -62,6 +43,17 @@ newtype AttrIndex =
   deriving (Show, Eq)
 
 -- | Points to one of:
+-- * CONSTANT_Long
+-- * CONSTANT_Float
+-- * CONSTANT_Double
+-- * CONSTANT_Integer
+-- * CONSTANT_Integer
+-- * CONSTANT_String
+newtype ConstIndex =
+  ConstIndex Word16
+  deriving (Show, Eq)
+
+-- | Points to one of:
 -- * CONSTANT_Fieldref_info
 -- * CONSTANT_Methodref_info
 -- * CONSTANT_InterfaceMethodref_info
@@ -91,7 +83,11 @@ type MethodInfo = MethodInfo' NameIndex DescIndex AttributeInfo
 
 type Attributes = Attributes' AttributeInfo
 
-data AttributeInfo =
-  AttributeInfo Index
-                ByteString
-  deriving (Show, Eq)
+type AttributeInfo
+   = AttributeInfo' ClassIndex NameIndex ConstIndex IRIndex IRIndexw IRLabel IRLabelw IntByte IntShort ArrayType Count
+
+type GenericAttribute = GenericAttribute' NameIndex
+
+type Exceptions = Exceptions' Exception
+
+type Exception = Exception' ClassIndex

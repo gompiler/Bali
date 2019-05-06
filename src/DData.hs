@@ -21,6 +21,7 @@ module DData where
 
 import           Base
 import           Data.Bits (Bits, (.&.))
+import           IRData
 
 type Index = Word16
 
@@ -305,14 +306,6 @@ instance HasAccessFlag (MethodInfo' nameIndex descIndex attr) where
 
 instance AccessInfo (MethodInfo' nameIndex descIndex attr)
 
-newtype Attributes' l =
-  Attributes [l]
-  deriving (Show, Eq, Foldable, Functor, Traversable)
-
-instance Convertible c e a b =>
-         Convertible c e (Attributes' a) (Attributes' b) where
-  convert = mapM . convert
-
 type ExceptionTables = ExceptionTables' ExceptionTable
 
 newtype ExceptionTables' l =
@@ -329,3 +322,96 @@ data ExceptionTable = ExceptionTable
   , handlerPc :: Word16
   , catchType :: Word16
   } deriving (Show, Eq)
+
+newtype Attributes' l =
+  Attributes [l]
+  deriving (Show, Eq, Foldable, Functor, Traversable)
+
+instance Convertible c e a b =>
+         Convertible c e (Attributes' a) (Attributes' b) where
+  convert = mapM . convert
+
+newtype StackLimit =
+  StackLimit Word16
+  deriving (Show, Eq)
+
+newtype LocalLimit =
+  LocalLimit Word16
+  deriving (Show, Eq)
+
+data AttributeInfo' classIndex nameIndex constIndex index indexw label labelw intByte intShort arrayType count
+  = ACode { stackLimit :: StackLimit
+          , localLimit :: LocalLimit
+          , code :: Instructions' (Instruction' index indexw label labelw intByte intShort arrayType count)
+          , exceptionTables :: ExceptionTables
+          , attrs :: Attributes' (AttributeInfo' classIndex nameIndex constIndex index indexw label labelw intByte intShort arrayType count) }
+  | AConst constIndex
+  | ALineNumberTable LineNumberTable
+  | AExceptions (Exceptions' (Exception' classIndex))
+  | AGeneric (GenericAttribute' nameIndex)
+  deriving (Show, Eq)
+
+-- | Our definition here slightly differs in that we require generic conversions
+-- that result in any possible attribute info
+-- Given that the references are initially indices, attributes will all be forwarded to generics
+-- With this pattern, we allow conversions to modify generic attributes into other types if they wish
+-- If such transformations are not required, the definition may simply rewrap it into a generic attribute
+instance ( Convertible c e classIndex classIndex'
+         , Convertible c e nameIndex nameIndex'
+         , Convertible c e constIndex constIndex'
+         , Convertible c e index index'
+         , Convertible c e indexw indexw'
+         , Convertible c e label label'
+         , Convertible c e labelw labelw'
+         , Convertible c e intByte intByte'
+         , Convertible c e intShort intShort'
+         , Convertible c e arrayType arrayType'
+         , Convertible c e count count'
+         , Convertible c e (GenericAttribute' nameIndex) (AttributeInfo' classIndex' nameIndex' constIndex' index' indexw' label' labelw' intByte' intShort' arrayType' count')
+         ) =>
+         Convertible c e (AttributeInfo' classIndex nameIndex constIndex index indexw label labelw intByte intShort arrayType count) (AttributeInfo' classIndex' nameIndex' constIndex' index' indexw' label' labelw' intByte' intShort' arrayType' count') where
+  convert c attributeInfo =
+    case attributeInfo of
+      ACode {..} ->
+        ACode <$-> stackLimit <*-> localLimit <*>
+        convert c code <*-> exceptionTables <*>
+        convert c attrs
+      AConst ci -> AConst <$> convert c ci
+      ALineNumberTable l -> pure $ ALineNumberTable l
+      AExceptions e -> AExceptions <$> convert c e
+      AGeneric n -> convert c n
+
+newtype LineNumberTable =
+  LineNumberTable [LineNumberInfo]
+  deriving (Show, Eq)
+
+data LineNumberInfo = LineNumberInfo
+  { startPc    :: Word16
+  , lineNumber :: Word16
+  } deriving (Show, Eq)
+
+newtype Exceptions' l =
+  Exceptions [l]
+  deriving (Show, Eq, Foldable, Functor, Traversable)
+
+instance Convertible c e a b =>
+         Convertible c e (Exceptions' a) (Exceptions' b) where
+  convert = mapM . convert
+
+-- | Derived from class info index
+newtype Exception' classIndex =
+  Exception classIndex
+  deriving (Show, Eq)
+
+instance Convertible c e classIndex classIndex' =>
+         Convertible c e (Exception' classIndex) (Exception' classIndex') where
+  convert c (Exception ci) = Exception <$> convert c ci
+
+data GenericAttribute' nameIndex =
+  GenericAttribute nameIndex
+                   ByteString
+  deriving (Show, Eq)
+
+instance Convertible c e nameIndex nameIndex' =>
+         Convertible c e (GenericAttribute' nameIndex) (GenericAttribute' nameIndex') where
+  convert c (GenericAttribute ni s) = GenericAttribute <$> convert c ni <*-> s
