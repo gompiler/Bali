@@ -189,14 +189,26 @@ instance ShowJ AttributeInfo where
         showJlist' c _nl (tabCount + 1) code <> -- TODO add exception tables
         showJlist' c (_nl <> _nl) (tabCount + 1) attrs
       AConst s -> tab <> byteString ".const " <> lazyByteString s
-      ALineNumberTable t -> showJ' c tabCount t
-      AExceptions e -> showJ' c tabCount e
+      ALineNumberTable l -> showJ' c tabCount l
+      AExceptions l -> showJ' c tabCount l
       ASourceFile s ->
         tab <> byteString ".sourcefile '" <> lazyByteString s <> charUtf8 '\''
+      AInnerClasses l -> showJ' c tabCount l
       AGeneric (GenericAttribute name _) ->
         tab <> byteString ".generic " <> lazyByteString name
     where
       tab = _tab c tabCount
+
+instance ShowJ InnerClasses where
+  showJ' c tabCount (InnerClasses l) =
+    _tab c tabCount <> byteString ".innerclasses" <> _nl <>
+    mconcat (intersperse _nl $ map (showJ' c $ tabCount + 1) l)
+
+instance ShowJ InnerClass where
+  showJ c InnerClass {..} =
+    lazyByteString innerClass <> _sp <> lazyByteString outerClass <> _sp <>
+    lazyByteString innerName <>
+    showJ c accessFlag
 
 instance ShowJ Exceptions where
   showJ' c tabCount (Exceptions l) =

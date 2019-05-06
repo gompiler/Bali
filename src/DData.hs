@@ -349,6 +349,7 @@ data AttributeInfo' classIndex nameIndex constIndex index indexw label labelw in
   | ALineNumberTable LineNumberTable
   | AExceptions (Exceptions' (Exception' classIndex))
   | ASourceFile nameIndex
+  | AInnerClasses (InnerClasses' (InnerClass' classIndex nameIndex))
   | AGeneric (GenericAttribute' nameIndex)
   deriving (Show, Eq)
 
@@ -379,8 +380,9 @@ instance ( Convertible c e classIndex classIndex'
         convert c attrs
       AConst ci -> AConst <$> convert c ci
       ALineNumberTable l -> pure $ ALineNumberTable l
-      AExceptions e -> AExceptions <$> convert c e
-      ASourceFile s -> ASourceFile <$> convert c s
+      AExceptions l -> AExceptions <$> convert c l
+      ASourceFile l -> ASourceFile <$> convert c l
+      AInnerClasses l -> AInnerClasses <$> convert c l
       AGeneric n -> convert c n
 
 newtype LineNumberTable =
@@ -417,3 +419,26 @@ data GenericAttribute' nameIndex =
 instance Convertible c e nameIndex nameIndex' =>
          Convertible c e (GenericAttribute' nameIndex) (GenericAttribute' nameIndex') where
   convert c (GenericAttribute ni s) = GenericAttribute <$> convert c ni <*-> s
+
+newtype InnerClasses' l =
+  InnerClasses [l]
+  deriving (Show, Eq, Foldable, Functor, Traversable)
+
+instance Convertible c e a b =>
+         Convertible c e (InnerClasses' a) (InnerClasses' b) where
+  convert = mapM . convert
+
+data InnerClass' classIndex nameIndex = InnerClass
+  { innerClass :: classIndex
+  , outerClass :: classIndex
+  , innerName  :: nameIndex
+  , accessFlag :: AccessFlag
+  } deriving (Show, Eq)
+
+instance ( Convertible c e classIndex classIndex'
+         , Convertible c e nameIndex nameIndex'
+         ) =>
+         Convertible c e (InnerClass' classIndex nameIndex) (InnerClass' classIndex' nameIndex') where
+  convert c InnerClass {..} =
+    InnerClass <$> convert c innerClass <*> convert c outerClass <*>
+    convert c innerName <*-> accessFlag

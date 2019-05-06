@@ -191,6 +191,7 @@ dparseAttribute name =
     "ConstantValue" -> Just $ AConst <$> dparse'
     "LineNumberTable" -> Just $ ALineNumberTable <$> dparse'
     "SourceFile" -> Just $ ASourceFile <$> dparse'
+    "InnerClasses" -> Just $ AInnerClasses <$> dparse'
     _ -> Nothing
 
 instance DParse GenericAttribute where
@@ -199,6 +200,15 @@ instance DParse GenericAttribute where
     c <- num4 "attribute length"
     b <- takeP (Just "attribute info") c
     return $ GenericAttribute name b
+
+instance DParse InnerClasses where
+  dparse' = InnerClasses <$> dparse2M "inner classes"
+
+instance DParse InnerClass where
+  dparse' =
+    InnerClass <$> (dparse' <?> "inner class") <*> (dparse' <?> "outer class") <*>
+    (dparse' <?> "inner name") <*>
+    dparse'
 
 instance DParse Exceptions where
   dparse' = Exceptions <$> dparse2M "exceptions"

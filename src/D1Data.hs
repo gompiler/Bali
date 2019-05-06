@@ -91,3 +91,7 @@ type GenericAttribute = GenericAttribute' NameIndex
 type Exceptions = Exceptions' Exception
 
 type Exception = Exception' ClassIndex
+
+type InnerClasses = InnerClasses' InnerClass
+
+type InnerClass = InnerClass' ClassIndex NameIndex

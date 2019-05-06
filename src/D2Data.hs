@@ -59,3 +59,7 @@ type GenericAttribute = GenericAttribute' ByteString
 type Exceptions = Exceptions' Exception
 
 type Exception = Exception' ByteString
+
+type InnerClasses = InnerClasses' InnerClass
+
+type InnerClass = InnerClass' ByteString ByteString
