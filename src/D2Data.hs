@@ -9,7 +9,6 @@ module D2Data
   ( NameAndTypeInfo(..)
   , RefInfo(..)
   , AttrIndex(..)
-  , AttributeInfoKind(..)
   , StackLimit(..)
   , LocalLimit(..)
   , ClassFile
@@ -72,10 +71,6 @@ data RefInfo = RefInfo
 refInfo :: ByteString -> NameAndTypeInfo -> RefInfo
 refInfo classInfo NameAndTypeInfo {..} =
   RefInfo {classInfo = classInfo, nameInfo = nameInfo, typeInfo = typeInfo}
-
-data AttributeInfoKind
-  = ACode'
-  | AConst'
 
 newtype StackLimit =
   StackLimit Word16
