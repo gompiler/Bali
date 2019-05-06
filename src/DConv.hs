@@ -4,18 +4,17 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE RecordWildCards       #-}
 
 module DConv
   ( dconv
   ) where
 
 import           Base
-import           Control.Monad              (zipWithM)
-import           Control.Monad.Except       (throwError)
-import qualified D1Data                     as T
+import           Control.Monad        (zipWithM)
+import           Control.Monad.Except (throwError)
+import qualified D1Data               as T
 import           D2Data
-import           Data.Function              ((&))
+import           Data.Function        ((&))
 import           DData
 import           DParse
 import           Text.Megaparsec

@@ -190,7 +190,8 @@ instance ShowJ AttributeInfo where
         showJlist' c (_nl <> _nl) (tabCount + 1) attrs
       AConst s -> byteString ".const " <> lazyByteString s
       ALineNumberTable t -> showJ' c tabCount t
-      AGeneric (GenericAttribute name _) -> byteString ".generic " <> lazyByteString name
+      AGeneric (GenericAttribute name _) ->
+        byteString ".generic " <> lazyByteString name
       _ -> byteString "todo" -- TODO
 
 instance ShowJ LineNumberTable where
