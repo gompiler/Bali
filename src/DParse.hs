@@ -190,7 +190,7 @@ dparseAttribute name =
       Just $ ACode <$> dparse' <*> dparse' <*> dparse' <*> dparse' <*> dparse'
     "ConstantValue" -> Just $ AConst <$> dparse'
     "LineNumberTable" -> Just $ ALineNumberTable <$> dparse'
-    "SourceFile" -> Nothing
+    "SourceFile" -> Just $ ASourceFile <$> dparse'
     _ -> Nothing
 
 instance DParse GenericAttribute where

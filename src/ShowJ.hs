@@ -181,22 +181,34 @@ instance ShowJ Attributes where
 
 instance ShowJ AttributeInfo where
   showJ' c tabCount attributeInfo =
-    _tab c tabCount <>
     case attributeInfo of
       ACode {..} ->
-        byteString ".code stack " <> showJ c stackLimit <> byteString " locals " <>
+        tab <> byteString ".code stack " <> showJ c stackLimit <>
+        byteString " locals " <>
         showJ c localLimit <>
         showJlist' c _nl (tabCount + 1) code <> -- TODO add exception tables
         showJlist' c (_nl <> _nl) (tabCount + 1) attrs
-      AConst s -> byteString ".const " <> lazyByteString s
+      AConst s -> tab <> byteString ".const " <> lazyByteString s
       ALineNumberTable t -> showJ' c tabCount t
+      AExceptions e -> showJ' c tabCount e
+      ASourceFile s ->
+        tab <> byteString ".sourcefile '" <> lazyByteString s <> charUtf8 '\''
       AGeneric (GenericAttribute name _) ->
-        byteString ".generic " <> lazyByteString name
-      _ -> byteString "todo" -- TODO
+        tab <> byteString ".generic " <> lazyByteString name
+    where
+      tab = _tab c tabCount
+
+instance ShowJ Exceptions where
+  showJ' c tabCount (Exceptions l) =
+    _tab c tabCount <> byteString ".exceptions" <> _nl <>
+    mconcat (intersperse _nl $ map (showJ' c $ tabCount + 1) l)
+
+instance ShowJ Exception where
+  showJ _ (Exception s) = byteString "throws " <> lazyByteString s
 
 instance ShowJ LineNumberTable where
   showJ' c tabCount (LineNumberTable l) =
-    byteString ".linenumbertable" <> _nl <>
+    _tab c tabCount <> byteString ".linenumbertable" <> _nl <>
     mconcat (intersperse _nl $ map (showJ' c $ tabCount + 1) l)
 
 instance ShowJ LineNumberInfo where
