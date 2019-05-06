@@ -113,20 +113,8 @@ instance ConstantPoolGet c =>
   convert cp attr@(GenericAttribute name s) =
     case dparseAttribute name of
       Just parser ->
-        nestedConv =<<
         convert cp =<< either (Left . ParseError) Right (parse parser "" s)
       Nothing -> return $ AGeneric attr
-      -- Allows us to apply this conversion once again to nested data
-    where
-      nestedConv :: AttributeInfo -> DConv AttributeInfo
-      nestedConv acode@ACode {attrs = Attributes a} = do
-        attrs' <- Attributes <$> mapM genericConv a
-        return $ (acode :: AttributeInfo) {attrs = attrs'}
-      nestedConv a = pure a
-      -- | Extract generic attribute info and attempt to generate the specific data
-      genericConv :: AttributeInfo -> DConv AttributeInfo
-      genericConv (AGeneric g) = convert cp g
-      genericConv a            = pure a
 
 instance ConstantPoolGet c =>
          Convertible (ConstantPool' c) ConvError T.GenericAttribute AttributeInfo where
