@@ -21,28 +21,8 @@ module DData where
 
 import           Base
 import           Data.Bits (Bits, (.&.))
-import           Data.List (intercalate)
-import           Prelude   hiding (showList)
 
 type Index = Word16
-
-showList :: Show a => Maybe Integer -> Maybe String -> [a] -> String
-showList startIndex tag items =
-  case tag of
-    Just t ->
-      t ++
-      if null items
-        then " []"
-        else "\n\t" ++ intercalate "\t\n" listString
-    _ -> intercalate "\n" listString
-  where
-    listString :: [String]
-    listString =
-      case startIndex of
-        Just i -> zipWith indexedItem [i ..] items
-        _      -> map show items
-    indexedItem :: Show a => Integer -> a -> String
-    indexedItem i v = show i ++ ": " ++ show v
 
 data FieldAccess
   = FPublic
@@ -137,14 +117,11 @@ instance ( Convertible c e classIndex classIndex'
 
 newtype ConstantPool' a =
   ConstantPool [a]
-  deriving (Eq, Foldable, Functor, Traversable)
+  deriving (Show, Eq, Foldable, Functor, Traversable)
 
 instance Convertible c e a b =>
          Convertible c e (ConstantPool' a) (ConstantPool' b) where
   convert = mapM . convert
-
-instance Show a => Show (ConstantPool' a) where
-  show (ConstantPool l) = showList (Just 1) (Just "ConstantPool") l
 
 -- | Constant pool info
 -- See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.4
@@ -237,14 +214,11 @@ instance Show AccessFlag where
 
 newtype Interfaces' l =
   Interfaces [l]
-  deriving (Eq, Foldable, Functor, Traversable)
+  deriving (Show, Eq, Foldable, Functor, Traversable)
 
 instance Convertible c e a b =>
          Convertible c e (Interfaces' a) (Interfaces' b) where
   convert = mapM . convert
-
-instance Show a => Show (Interfaces' a) where
-  show (Interfaces l) = showList (Just 0) (Just "Interfaces") l
 
 newtype InterfaceInfo' classIndex =
   InterfaceInfo classIndex
@@ -256,13 +230,10 @@ instance Convertible c e classIndex classIndex' =>
 
 newtype Fields' l =
   Fields [l]
-  deriving (Eq, Foldable, Functor, Traversable)
+  deriving (Show, Eq, Foldable, Functor, Traversable)
 
 instance Convertible c e a b => Convertible c e (Fields' a) (Fields' b) where
   convert = mapM . convert
-
-instance Show a => Show (Fields' a) where
-  show (Fields l) = showList (Just 0) (Just "Fields") l
 
 data FieldInfo' nameIndex descIndex attr = FieldInfo
   { accessFlag :: AccessFlag
@@ -308,13 +279,10 @@ data MethodDescriptor =
 
 newtype Methods' l =
   Methods [l]
-  deriving (Eq, Foldable, Functor, Traversable)
+  deriving (Show, Eq, Foldable, Functor, Traversable)
 
 instance Convertible c e a b => Convertible c e (Methods' a) (Methods' b) where
   convert = mapM . convert
-
-instance Show a => Show (Methods' a) where
-  show (Methods l) = showList (Just 0) (Just "Methods") l
 
 data MethodInfo' nameIndex descIndex attr = MethodInfo
   { accessFlag :: AccessFlag
@@ -339,27 +307,21 @@ instance AccessInfo (MethodInfo' nameIndex descIndex attr)
 
 newtype Attributes' l =
   Attributes [l]
-  deriving (Eq, Foldable, Functor, Traversable)
+  deriving (Show, Eq, Foldable, Functor, Traversable)
 
 instance Convertible c e a b =>
          Convertible c e (Attributes' a) (Attributes' b) where
   convert = mapM . convert
 
-instance Show a => Show (Attributes' a) where
-  show (Attributes l) = showList (Just 0) (Just "Attributes") l
-
 type ExceptionTables = ExceptionTables' ExceptionTable
 
 newtype ExceptionTables' l =
   ExceptionTables [l]
-  deriving (Eq, Foldable, Functor, Traversable)
+  deriving (Show, Eq, Foldable, Functor, Traversable)
 
 instance Convertible c e a b =>
          Convertible c e (ExceptionTables' a) (ExceptionTables' b) where
   convert = mapM . convert
-
-instance Show a => Show (ExceptionTables' a) where
-  show (ExceptionTables l) = showList (Just 0) (Just "ExceptionTables") l
 
 data ExceptionTable = ExceptionTable
   { startPc   :: Word16
