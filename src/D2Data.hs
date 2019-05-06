@@ -23,6 +23,8 @@ module D2Data
   , MethodInfo
   , Attributes
   , AttributeInfo(..)
+  , LineNumberTable(..)
+  , LineNumberInfo(..)
   , refInfo
   , module DData
   ) where
@@ -88,6 +90,16 @@ data AttributeInfo
           , localLimit      :: LocalLimit
           , code            :: Instructions
           , exceptionTables :: ExceptionTables
-          , cAttrs          :: Attributes }
+          , attrs           :: Attributes }
   | AConst ByteString
+  | ALineNumberTable LineNumberTable
   deriving (Show, Eq)
+
+newtype LineNumberTable =
+  LineNumberTable [LineNumberInfo]
+  deriving (Show, Eq)
+
+data LineNumberInfo = LineNumberInfo
+  { startPc    :: Word16
+  , lineNumber :: Word16
+  } deriving (Show, Eq)

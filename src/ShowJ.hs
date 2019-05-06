@@ -161,8 +161,9 @@ instance ShowJ AttributeInfo where
         byteString ".code stack " <> showJ stackLimit <> byteString " locals " <>
         showJ localLimit <>
         showJlist' _nl (tabCount + 1) code <> -- TODO add exception tables
-        showJlist' (_nl <> _nl) (tabCount + 1) cAttrs
-      AConst _ -> byteString ".const"
+        showJlist' (_nl <> _nl) (tabCount + 1) attrs
+      AConst s -> byteString ".const " <> lazyByteString s
+      _ -> byteString "todo"
 
 instance ShowJ StackLimit where
   showJ (StackLimit i) = showJ i

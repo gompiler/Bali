@@ -105,14 +105,14 @@ instance Convertible ConstantPool ConvError T.AttributeInfo AttributeInfo where
     getInfo cp i >>= \case
       "Code" -> do
         ACodePart {..} <- convParse attrCodeParser
-        cAttrs <- convert cp pAttributes
+        attrs <- convert cp pAttributes
         return
           ACode
             { stackLimit = pStackLimit
             , localLimit = pLocalLimit
             , code = pCode
             , exceptionTables = pExceptionTables
-            , cAttrs = cAttrs
+            , attrs = attrs
             }
         where attrCodeParser :: Parser ACodePart
               attrCodeParser = do
@@ -129,7 +129,8 @@ instance Convertible ConstantPool ConvError T.AttributeInfo AttributeInfo where
                     , pExceptionTables = exceptionTables
                     , pAttributes = attrs
                     }
-      "ConstantValue" -> AConst <$> getInfo cp (G.runGet G.getWord16be s)
+      "ConstantValue" -> AConst <$> getInfo cp (G.runGet G.getWord16be s) -- TODO verify
+      "LineNumberTable" -> ALineNumberTable <$> convParse dparse'
       tag -> return $ AConst tag
     where
       convParse :: Parser a -> DConv a

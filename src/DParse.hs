@@ -17,14 +17,14 @@ module DParse
 
 import           Base
 import           Control.Monad              (replicateM)
+import           D1Data
 import qualified D2Data                     as D2
 import           Data.Binary                (encode)
 import qualified Data.Binary.Get            as G
 import           Data.ByteString.Internal   (c2w, w2c)
 import           Data.ByteString.Lazy       (pack)
-import           D1Data
-import           IRData
 import           IR1Data
+import           IRData
 import           Text.Megaparsec
 import qualified Text.Megaparsec.Byte.Lexer as L
 
@@ -68,8 +68,7 @@ dparse2M tag = dparseM (u2 $ tag ++ " count") dparse'
 
 instance DParse ClassFile where
   dparse' =
-    ClassFile <$ magic <*> u2 "minor version" <*> u2 "major version" <*>
-    dparse' <*>
+    ClassFile <$ magic <*> u2 "minor version" <*> u2 "major version" <*> dparse' <*>
     dparse' <*>
     (dparse' <?> "this class") <*>
     (dparse' <?> "super class") <*>
@@ -127,8 +126,7 @@ instance DParse ConstantPoolInfo where
               9 -> pure CpmInvokeInterface
               _ -> customFailure $ InvalidRefKind kind
       info 16 = CpMethodType <$> dparse'
-      info 18 =
-        CpInvokeDynamic <$> dparse' <*> dparse'
+      info 18 = CpInvokeDynamic <$> dparse' <*> dparse'
       info i = customFailure $ InvalidConstantPoolTag i
 
 instance DParse NameIndex where
@@ -483,6 +481,12 @@ instance DParse D2.StackLimit where
 
 instance DParse D2.LocalLimit where
   dparse' = D2.LocalLimit <$> u2 "max local"
+
+instance DParse D2.LineNumberTable where
+  dparse' = D2.LineNumberTable <$> dparse2M "line number table"
+
+instance DParse D2.LineNumberInfo where
+  dparse' = D2.LineNumberInfo <$> u2 "start pc" <*> u2 "line number"
 
 u1 :: (Ord e) => String -> Parser' e Word8
 u1 err = anySingle <?> err
