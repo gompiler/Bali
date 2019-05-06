@@ -7,11 +7,8 @@
 module ShowJ
   ( ShowJ(..)
   , byteStringJ
-  , byteStringJ'
   , printJ
-  , printJ'
   , stringJ
-  , stringJ'
   , showJDefaultConfigs
   , ShowJConfig(..)
   ) where
@@ -27,12 +24,17 @@ import           IRData
 import           System.IO
 
 data ShowJConfig = ShowJConfig
-  { tabSize       :: Int
+  -- Prefix to be added to every line
+  { prefix        :: Builder
+  -- Number of spaces in a tab
+  , tabSize       :: Int
+  -- True to add line labels to bytecode instructions
   , showCodeIndex :: Bool
   }
 
 showJDefaultConfigs :: ShowJConfig
-showJDefaultConfigs = ShowJConfig {tabSize = 4, showCodeIndex = True}
+showJDefaultConfigs =
+  ShowJConfig {prefix = mempty, tabSize = 4, showCodeIndex = True}
 
 _nl :: Builder
 _nl = charUtf8 '\n'
@@ -48,25 +50,16 @@ _tab _ 0 = mempty
 _tab ShowJConfig {tabSize} tabCount =
   mconcat $ replicate (tabCount * tabSize) _sp
 
-byteStringJ :: ShowJ a => a -> ByteString
-byteStringJ = byteStringJ' showJDefaultConfigs 0
+byteStringJ :: ShowJ a => ShowJConfig -> a -> ByteString
+byteStringJ config s = toLazyByteString $ showJ' config 0 s
 
-byteStringJ' :: ShowJ a => ShowJConfig -> Int -> a -> ByteString
-byteStringJ' config tabCount s = toLazyByteString $ showJ' config tabCount s
+stringJ :: ShowJ a => ShowJConfig -> a -> String
+stringJ config s = L.unpack $ byteStringJ config  s
 
-stringJ :: ShowJ a => a -> String
-stringJ = stringJ' showJDefaultConfigs 0
-
-stringJ' :: ShowJ a => ShowJConfig -> Int -> a -> String
-stringJ' config tabCount s = L.unpack $ byteStringJ' config tabCount s
-
-printJ :: ShowJ a => a -> IO ()
-printJ = printJ' showJDefaultConfigs 0
-
-printJ' :: ShowJ a => ShowJConfig -> Int -> a -> IO ()
-printJ' config tabCount s = do
+printJ :: ShowJ a => ShowJConfig -> a -> IO ()
+printJ config s = do
   hFlush stdout
-  L.putStrLn $ byteStringJ' config tabCount s
+  L.putStrLn $ byteStringJ config  s
 
 -- | Given a list of items, show the prefix and the list if it is not empty
 -- or nothing otherwise
@@ -177,7 +170,11 @@ instance ShowJ MethodInfo where
 
 instance ShowJ Attributes where
   showJ' c tabCount (Attributes l) =
-    mconcat $ intersperse _nl $ map (showJ' c tabCount) l
+    mconcat $ intersperse _nl $ map (showJ' c tabCount) $ filter shouldShow l
+    where
+      shouldShow :: AttributeInfo -> Bool
+      shouldShow ASynthetic = False
+      shouldShow _          = True
 
 instance ShowJ AttributeInfo where
   showJ' c tabCount attributeInfo =
@@ -194,6 +191,7 @@ instance ShowJ AttributeInfo where
       ASourceFile s ->
         tab <> byteString ".sourcefile '" <> lazyByteString s <> charUtf8 '\''
       AInnerClasses l -> showJ' c tabCount l
+      ASynthetic -> mempty
       AGeneric (GenericAttribute name _) ->
         tab <> byteString ".generic " <> lazyByteString name
     where

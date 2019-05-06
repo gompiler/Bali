@@ -350,6 +350,7 @@ data AttributeInfo' classIndex nameIndex constIndex index indexw label labelw in
   | AExceptions (Exceptions' (Exception' classIndex))
   | ASourceFile nameIndex
   | AInnerClasses (InnerClasses' (InnerClass' classIndex nameIndex))
+  | ASynthetic
   | AGeneric (GenericAttribute' nameIndex)
   deriving (Show, Eq)
 
@@ -383,6 +384,7 @@ instance ( Convertible c e classIndex classIndex'
       AExceptions l -> AExceptions <$> convert c l
       ASourceFile l -> ASourceFile <$> convert c l
       AInnerClasses l -> AInnerClasses <$> convert c l
+      ASynthetic -> pure ASynthetic
       AGeneric n -> convert c n
 
 newtype LineNumberTable =

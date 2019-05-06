@@ -192,6 +192,7 @@ dparseAttribute name =
     "LineNumberTable" -> Just $ ALineNumberTable <$> dparse'
     "SourceFile" -> Just $ ASourceFile <$> dparse'
     "InnerClasses" -> Just $ AInnerClasses <$> dparse'
+    "Synthetic" -> Just $ pure ASynthetic
     _ -> Nothing
 
 instance DParse GenericAttribute where
