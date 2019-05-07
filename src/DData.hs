@@ -138,11 +138,11 @@ data ConstantPoolInfo' classIndex nameIndex descIndex nameAndTypeIndex stringInd
                          nameAndTypeIndex
   | CpString stringIndex
   -- bytes
-  | CpInteger Int32
-  | CpFloat Float
+  | CpInteger Word32
+  | CpFloat Word32
   -- high_bytes, low_bytes
-  | CpLong Int64
-  | CpDouble Double
+  | CpLong Word64
+  | CpDouble Word64
   -- name_index, descriptor_index
   | CpNameAndType nameIndex
                   descIndex
