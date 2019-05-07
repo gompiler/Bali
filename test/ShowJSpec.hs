@@ -14,10 +14,14 @@ spec =
   describe "" $ do
     it "Instructions" $ do
       let i = Instructions [Astore0, Dcmpg, Dstore (IRIndex 128), Iconst0]
-      stringJ (i :: Instructions) `shouldBe`
+      stringJ
+        (showJDefaultConfigs {showCodeIndex = False})
+        (i :: Instructions) `shouldBe`
         intercalate "\n" ["astore_0", "dcmpg", "dstore 128", "iconst_0"]
     it "Test" $ do
       file <- resourceFile "test/resources/Test.class"
       case file of
-        Just f  -> either expectationFailure (printJ' 2) $ disassemble f
+        Just f ->
+          either expectationFailure (printJ showJDefaultConfigs) $
+          disassemble f
         Nothing -> print "Skipping Test.class"

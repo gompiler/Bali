@@ -10,39 +10,20 @@ with regards to the indices.
 {-# LANGUAGE DeriveFoldable        #-}
 {-# LANGUAGE DeriveTraversable     #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE MultiWayIf            #-}
 {-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE RecordWildCards       #-}
-{-# LANGUAGE FlexibleContexts #-}
 
 module DData where
 
 import           Base
 import           Data.Bits (Bits, (.&.))
-import           Data.List (intercalate)
-import           Prelude   hiding (showList)
+import           IRData
 
 type Index = Word16
-
-showList :: Show a => Maybe Integer -> Maybe String -> [a] -> String
-showList startIndex tag items =
-  case tag of
-    Just t ->
-      t ++
-      if null items
-        then " []"
-        else "\n\t" ++ intercalate "\t\n" listString
-    _ -> intercalate "\n" listString
-  where
-    listString :: [String]
-    listString =
-      case startIndex of
-        Just i -> zipWith indexedItem [i ..] items
-        _      -> map show items
-    indexedItem :: Show a => Integer -> a -> String
-    indexedItem i v = show i ++ ": " ++ show v
 
 data FieldAccess
   = FPublic
@@ -137,14 +118,11 @@ instance ( Convertible c e classIndex classIndex'
 
 newtype ConstantPool' a =
   ConstantPool [a]
-  deriving (Eq, Foldable, Functor, Traversable)
+  deriving (Show, Eq, Foldable, Functor, Traversable)
 
 instance Convertible c e a b =>
          Convertible c e (ConstantPool' a) (ConstantPool' b) where
   convert = mapM . convert
-
-instance Show a => Show (ConstantPool' a) where
-  show (ConstantPool l) = showList (Just 1) (Just "ConstantPool") l
 
 -- | Constant pool info
 -- See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.4
@@ -237,14 +215,11 @@ instance Show AccessFlag where
 
 newtype Interfaces' l =
   Interfaces [l]
-  deriving (Eq, Foldable, Functor, Traversable)
+  deriving (Show, Eq, Foldable, Functor, Traversable)
 
 instance Convertible c e a b =>
          Convertible c e (Interfaces' a) (Interfaces' b) where
   convert = mapM . convert
-
-instance Show a => Show (Interfaces' a) where
-  show (Interfaces l) = showList (Just 0) (Just "Interfaces") l
 
 newtype InterfaceInfo' classIndex =
   InterfaceInfo classIndex
@@ -256,13 +231,10 @@ instance Convertible c e classIndex classIndex' =>
 
 newtype Fields' l =
   Fields [l]
-  deriving (Eq, Foldable, Functor, Traversable)
+  deriving (Show, Eq, Foldable, Functor, Traversable)
 
 instance Convertible c e a b => Convertible c e (Fields' a) (Fields' b) where
   convert = mapM . convert
-
-instance Show a => Show (Fields' a) where
-  show (Fields l) = showList (Just 0) (Just "Fields") l
 
 data FieldInfo' nameIndex descIndex attr = FieldInfo
   { accessFlag :: AccessFlag
@@ -308,13 +280,10 @@ data MethodDescriptor =
 
 newtype Methods' l =
   Methods [l]
-  deriving (Eq, Foldable, Functor, Traversable)
+  deriving (Show, Eq, Foldable, Functor, Traversable)
 
 instance Convertible c e a b => Convertible c e (Methods' a) (Methods' b) where
   convert = mapM . convert
-
-instance Show a => Show (Methods' a) where
-  show (Methods l) = showList (Just 0) (Just "Methods") l
 
 data MethodInfo' nameIndex descIndex attr = MethodInfo
   { accessFlag :: AccessFlag
@@ -337,33 +306,141 @@ instance HasAccessFlag (MethodInfo' nameIndex descIndex attr) where
 
 instance AccessInfo (MethodInfo' nameIndex descIndex attr)
 
-newtype Attributes' l =
-  Attributes [l]
-  deriving (Eq, Foldable, Functor, Traversable)
-
-instance Convertible c e a b =>
-         Convertible c e (Attributes' a) (Attributes' b) where
-  convert = mapM . convert
-
-instance Show a => Show (Attributes' a) where
-  show (Attributes l) = showList (Just 0) (Just "Attributes") l
-
 type ExceptionTables = ExceptionTables' ExceptionTable
 
 newtype ExceptionTables' l =
   ExceptionTables [l]
-  deriving (Eq, Foldable, Functor, Traversable)
+  deriving (Show, Eq, Foldable, Functor, Traversable)
 
 instance Convertible c e a b =>
          Convertible c e (ExceptionTables' a) (ExceptionTables' b) where
   convert = mapM . convert
 
-instance Show a => Show (ExceptionTables' a) where
-  show (ExceptionTables l) = showList (Just 0) (Just "ExceptionTables") l
-
 data ExceptionTable = ExceptionTable
-  { eStartPc   :: Word16
-  , eEndPc     :: Word16
-  , eHandlerPc :: Word16
-  , eCatchType :: Word16
+  { startPc   :: Word16
+  , endPc     :: Word16
+  , handlerPc :: Word16
+  , catchType :: Word16
   } deriving (Show, Eq)
+
+newtype Attributes' l =
+  Attributes [l]
+  deriving (Show, Eq, Foldable, Functor, Traversable)
+
+instance Convertible c e a b =>
+         Convertible c e (Attributes' a) (Attributes' b) where
+  convert = mapM . convert
+
+newtype StackLimit =
+  StackLimit Word16
+  deriving (Show, Eq)
+
+newtype LocalLimit =
+  LocalLimit Word16
+  deriving (Show, Eq)
+
+data AttributeInfo' classIndex nameIndex constIndex index indexw label labelw intByte intShort arrayType count
+  = ACode { stackLimit :: StackLimit
+          , localLimit :: LocalLimit
+          , code :: Instructions' (Instruction' index indexw label labelw intByte intShort arrayType count)
+          , exceptionTables :: ExceptionTables
+          , attrs :: Attributes' (AttributeInfo' classIndex nameIndex constIndex index indexw label labelw intByte intShort arrayType count) }
+  | AConst constIndex
+  | ALineNumberTable LineNumberTable
+  | AExceptions (Exceptions' (Exception' classIndex))
+  | ASourceFile nameIndex
+  | AInnerClasses (InnerClasses' (InnerClass' classIndex nameIndex))
+  | ASynthetic
+  | AGeneric (GenericAttribute' nameIndex)
+  deriving (Show, Eq)
+
+-- | Our definition here slightly differs in that we require generic conversions
+-- that result in any possible attribute info
+-- Given that the references are initially indices, attributes will all be forwarded to generics
+-- With this pattern, we allow conversions to modify generic attributes into other types if they wish
+-- If such transformations are not required, the definition may simply rewrap it into a generic attribute
+instance ( Convertible c e classIndex classIndex'
+         , Convertible c e nameIndex nameIndex'
+         , Convertible c e constIndex constIndex'
+         , Convertible c e index index'
+         , Convertible c e indexw indexw'
+         , Convertible c e label label'
+         , Convertible c e labelw labelw'
+         , Convertible c e intByte intByte'
+         , Convertible c e intShort intShort'
+         , Convertible c e arrayType arrayType'
+         , Convertible c e count count'
+         , Convertible c e (GenericAttribute' nameIndex) (AttributeInfo' classIndex' nameIndex' constIndex' index' indexw' label' labelw' intByte' intShort' arrayType' count')
+         ) =>
+         Convertible c e (AttributeInfo' classIndex nameIndex constIndex index indexw label labelw intByte intShort arrayType count) (AttributeInfo' classIndex' nameIndex' constIndex' index' indexw' label' labelw' intByte' intShort' arrayType' count') where
+  convert c attributeInfo =
+    case attributeInfo of
+      ACode {..} ->
+        ACode <$-> stackLimit <*-> localLimit <*>
+        convert c code <*-> exceptionTables <*>
+        convert c attrs
+      AConst ci -> AConst <$> convert c ci
+      ALineNumberTable l -> pure $ ALineNumberTable l
+      AExceptions l -> AExceptions <$> convert c l
+      ASourceFile l -> ASourceFile <$> convert c l
+      AInnerClasses l -> AInnerClasses <$> convert c l
+      ASynthetic -> pure ASynthetic
+      AGeneric n -> convert c n
+
+newtype LineNumberTable =
+  LineNumberTable [LineNumberInfo]
+  deriving (Show, Eq)
+
+data LineNumberInfo = LineNumberInfo
+  { startPc    :: Word16
+  , lineNumber :: Word16
+  } deriving (Show, Eq)
+
+newtype Exceptions' l =
+  Exceptions [l]
+  deriving (Show, Eq, Foldable, Functor, Traversable)
+
+instance Convertible c e a b =>
+         Convertible c e (Exceptions' a) (Exceptions' b) where
+  convert = mapM . convert
+
+-- | Derived from class info index
+newtype Exception' classIndex =
+  Exception classIndex
+  deriving (Show, Eq)
+
+instance Convertible c e classIndex classIndex' =>
+         Convertible c e (Exception' classIndex) (Exception' classIndex') where
+  convert c (Exception ci) = Exception <$> convert c ci
+
+data GenericAttribute' nameIndex =
+  GenericAttribute nameIndex
+                   ByteString
+  deriving (Show, Eq)
+
+instance Convertible c e nameIndex nameIndex' =>
+         Convertible c e (GenericAttribute' nameIndex) (GenericAttribute' nameIndex') where
+  convert c (GenericAttribute ni s) = GenericAttribute <$> convert c ni <*-> s
+
+newtype InnerClasses' l =
+  InnerClasses [l]
+  deriving (Show, Eq, Foldable, Functor, Traversable)
+
+instance Convertible c e a b =>
+         Convertible c e (InnerClasses' a) (InnerClasses' b) where
+  convert = mapM . convert
+
+data InnerClass' classIndex nameIndex = InnerClass
+  { innerClass :: classIndex
+  , outerClass :: classIndex
+  , innerName  :: nameIndex
+  , accessFlag :: AccessFlag
+  } deriving (Show, Eq)
+
+instance ( Convertible c e classIndex classIndex'
+         , Convertible c e nameIndex nameIndex'
+         ) =>
+         Convertible c e (InnerClass' classIndex nameIndex) (InnerClass' classIndex' nameIndex') where
+  convert c InnerClass {..} =
+    InnerClass <$> convert c innerClass <*> convert c outerClass <*>
+    convert c innerName <*-> accessFlag

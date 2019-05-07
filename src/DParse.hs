@@ -6,25 +6,28 @@ Note that values are stored using big-endian
 References:
 - https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.1
 -}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE OverloadedStrings     #-}
 
 module DParse
   ( DParser
   , Parser
   , DParse(..)
   , DParseError
+  , dparseAttribute
   ) where
 
 import           Base
 import           Control.Monad              (replicateM)
-import qualified D2Data                     as D2
+import           D1Data
 import           Data.Binary                (encode)
 import qualified Data.Binary.Get            as G
 import           Data.ByteString.Internal   (c2w, w2c)
 import           Data.ByteString.Lazy       (pack)
-import           D1Data
-import           IRData
+import           DData
 import           IR1Data
+import           IRData
 import           Text.Megaparsec
 import qualified Text.Megaparsec.Byte.Lexer as L
 
@@ -68,8 +71,7 @@ dparse2M tag = dparseM (u2 $ tag ++ " count") dparse'
 
 instance DParse ClassFile where
   dparse' =
-    ClassFile <$ magic <*> u2 "minor version" <*> u2 "major version" <*>
-    dparse' <*>
+    ClassFile <$ magic <*> u2 "minor version" <*> u2 "major version" <*> dparse' <*>
     dparse' <*>
     (dparse' <?> "this class") <*>
     (dparse' <?> "super class") <*>
@@ -127,8 +129,7 @@ instance DParse ConstantPoolInfo where
               9 -> pure CpmInvokeInterface
               _ -> customFailure $ InvalidRefKind kind
       info 16 = CpMethodType <$> dparse'
-      info 18 =
-        CpInvokeDynamic <$> dparse' <*> dparse'
+      info 18 = CpInvokeDynamic <$> dparse' <*> dparse'
       info i = customFailure $ InvalidConstantPoolTag i
 
 instance DParse NameIndex where
@@ -151,6 +152,9 @@ instance DParse RefIndex where
 
 instance DParse AttrIndex where
   dparse' = AttrIndex <$> u2 "attr index"
+
+instance DParse ConstIndex where
+  dparse' = ConstIndex <$> u2 "constant index"
 
 instance DParse Interfaces where
   dparse' = Interfaces <$> dparse2M "interfaces"
@@ -177,11 +181,41 @@ instance DParse Attributes where
   dparse' = Attributes <$> dparse2M "attributes"
 
 instance DParse AttributeInfo where
+  dparse' = AGeneric <$> dparse'
+
+dparseAttribute :: ByteString -> Maybe (Parser AttributeInfo)
+dparseAttribute name =
+  case name of
+    "Code" ->
+      Just $ ACode <$> dparse' <*> dparse' <*> dparse' <*> dparse' <*> dparse'
+    "ConstantValue" -> Just $ AConst <$> dparse'
+    "LineNumberTable" -> Just $ ALineNumberTable <$> dparse'
+    "SourceFile" -> Just $ ASourceFile <$> dparse'
+    "InnerClasses" -> Just $ AInnerClasses <$> dparse'
+    "Synthetic" -> Just $ pure ASynthetic
+    _ -> Nothing
+
+instance DParse GenericAttribute where
   dparse' = do
-    name <- num2 "attribute name index"
+    name <- dparse' <?> "attribute name index"
     c <- num4 "attribute length"
     b <- takeP (Just "attribute info") c
-    return $ AttributeInfo name b
+    return $ GenericAttribute name b
+
+instance DParse InnerClasses where
+  dparse' = InnerClasses <$> dparse2M "inner classes"
+
+instance DParse InnerClass where
+  dparse' =
+    InnerClass <$> (dparse' <?> "inner class") <*> (dparse' <?> "outer class") <*>
+    (dparse' <?> "inner name") <*>
+    dparse'
+
+instance DParse Exceptions where
+  dparse' = Exceptions <$> dparse2M "exceptions"
+
+instance DParse Exception where
+  dparse' = Exception <$> (dparse' <?> "exception")
 
 instance DParse Int32 where
   dparse' = L.decimal
@@ -478,12 +512,20 @@ instance DParse ExceptionTable where
     num2 "handler pointer" <*>
     num2 "catch pointer"
 
-instance DParse D2.StackLimit where
-  dparse' = D2.StackLimit <$> u2 "max stack"
+instance DParse StackLimit where
+  dparse' = StackLimit <$> u2 "max stack"
 
-instance DParse D2.LocalLimit where
-  dparse' = D2.LocalLimit <$> u2 "max local"
+instance DParse LocalLimit where
+  dparse' = LocalLimit <$> u2 "max local"
 
+instance DParse LineNumberTable where
+  dparse' = LineNumberTable <$> dparse2M "line number table"
+
+instance DParse LineNumberInfo where
+  dparse' = LineNumberInfo <$> u2 "start pc" <*> u2 "line number"
+
+--instance DParse Exceptions where
+--  dparse' = Exceptions <$> dparse2M "exceptions"
 u1 :: (Ord e) => String -> Parser' e Word8
 u1 err = anySingle <?> err
 

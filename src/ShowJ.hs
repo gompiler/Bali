@@ -3,13 +3,14 @@
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE RecordWildCards      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module ShowJ
   ( ShowJ(..)
+  , byteStringJ
   , printJ
-  , printJ'
   , stringJ
+  , showJDefaultConfigs
+  , ShowJConfig(..)
   ) where
 
 import           Base
@@ -17,12 +18,23 @@ import           D2Data
 import           Data.ByteString.Builder
 import qualified Data.ByteString.Lazy.Char8 as L
 import           Data.List                  (intersperse)
+import           DData
 import           IR1Data
 import           IRData
 import           System.IO
 
-tabSize :: Int
-tabSize = 2
+data ShowJConfig = ShowJConfig
+  -- Prefix to be added to every line
+  { prefix        :: Builder
+  -- Number of spaces in a tab
+  , tabSize       :: Int
+  -- True to add line labels to bytecode instructions
+  , showCodeIndex :: Bool
+  }
+
+showJDefaultConfigs :: ShowJConfig
+showJDefaultConfigs =
+  ShowJConfig {prefix = mempty, tabSize = 4, showCodeIndex = True}
 
 _nl :: Builder
 _nl = charUtf8 '\n'
@@ -33,71 +45,78 @@ _sp = charUtf8 ' '
 _sc :: Builder
 _sc = charUtf8 ';'
 
-_tab :: Int -> Builder
-_tab 0        = mempty
-_tab tabCount = mconcat $ replicate (tabCount * tabSize) _sp
+_tab :: ShowJConfig -> Int -> Builder
+_tab _ 0 = mempty
+_tab ShowJConfig {tabSize} tabCount =
+  mconcat $ replicate (tabCount * tabSize) _sp
 
-stringJ :: ShowJ a => a -> String
-stringJ s = L.unpack $ toLazyByteString $ showJ s
+byteStringJ :: ShowJ a => ShowJConfig -> a -> ByteString
+byteStringJ config s = toLazyByteString $ showJ' config 0 s
 
-printJ :: ShowJ a => a -> IO ()
-printJ = printJ' 0
+stringJ :: ShowJ a => ShowJConfig -> a -> String
+stringJ config s = L.unpack $ byteStringJ config  s
 
-printJ' :: ShowJ a => Int -> a -> IO ()
-printJ' tabCount s = do
+printJ :: ShowJ a => ShowJConfig -> a -> IO ()
+printJ config s = do
   hFlush stdout
-  L.putStrLn $ toLazyByteString $ showJ' tabCount s
+  L.putStrLn $ byteStringJ config  s
 
 -- | Given a list of items, show the prefix and the list if it is not empty
 -- or nothing otherwise
-showJlist' :: (ShowJ (f a), Foldable f) => Builder -> Int -> f a -> Builder
-showJlist' prefix tabCount info =
+showJlist' ::
+     (ShowJ (f a), Foldable f)
+  => ShowJConfig
+  -> Builder
+  -> Int
+  -> f a
+  -> Builder
+showJlist' config prefix tabCount info =
   if null info
     then mempty
-    else prefix <> showJ' tabCount info
+    else prefix <> showJ' config tabCount info
 
 -- | Bytecode show implementation using efficient ByteString builders
 -- showJ is the default builder without any tab prefixes
 -- showJ' will take tab prefixes into account
 class ShowJ a where
   {-# MINIMAL showJ | showJ' #-}
-  showJ :: a -> Builder
-  showJ = showJ' 0
-  showJ' :: Int -> a -> Builder
-  showJ' tabCount a = _tab tabCount <> showJ a
+  showJ :: ShowJConfig -> a -> Builder
+  showJ c = showJ' c 0
+  showJ' :: ShowJConfig -> Int -> a -> Builder
+  showJ' c tabCount a = _tab c tabCount <> showJ c a
 
 instance ShowJ L.ByteString where
-  showJ = lazyByteString
+  showJ _ = lazyByteString
 
 instance ShowJ ClassFile where
-  showJ' tabCount ClassFile {..} =
+  showJ' c tabCount ClassFile {..} =
     tab <> byteString ".version " <> word16Dec majorVersion <> _sp <>
     word16Dec minorVersion <>
     _nl <>
     tab <>
     byteString ".class" <>
-    showJ accessFlag <>
+    showJ c accessFlag <>
     _sp <>
-    showJ thisClass <>
+    showJ c thisClass <>
     _nl <>
     tab <>
     byteString ".super " <>
-    showJ superClass <>
-    showJlist' (_nl <> _nl) tabCount interfaces <>
-    showJlist' (_nl <> _nl) tabCount fields <>
-    showJlist' (_nl <> _nl) tabCount methods <>
-    showJlist' (_nl <> _nl) tabCount attrs <>
+    showJ c superClass <>
+    showJlist' c (_nl <> _nl) tabCount interfaces <>
+    showJlist' c (_nl <> _nl) tabCount fields <>
+    showJlist' c (_nl <> _nl) tabCount methods <>
+    showJlist' c (_nl <> _nl) tabCount attrs <>
     _nl <>
     _nl <>
     byteString ".end class"
     where
-      tab = _tab tabCount
+      tab = _tab c tabCount
 
 instance ShowJ AccessFlag
   -- Attaches a space beforehand
                                  where
-  showJ flag =
-    showJ (fieldAccess flag) <> optional "static" isStatic <>
+  showJ c flag =
+    showJ c (fieldAccess flag) <> optional "static" isStatic <>
     optional "final" isFinal <>
     optional "volatile" isVolatile <>
     optional "transient" isTransient <>
@@ -107,11 +126,11 @@ instance ShowJ AccessFlag
       optional :: L.ByteString -> (AccessFlag -> Bool) -> Builder
       optional s f =
         if f flag
-          then _sp <> showJ s
+          then _sp <> showJ c s
           else mempty
 
 instance ShowJ FieldAccess where
-  showJ fa =
+  showJ _ fa =
     case fa of
       FPublic         -> byteString " public"
       FPrivate        -> byteString " private"
@@ -119,105 +138,147 @@ instance ShowJ FieldAccess where
       FPackagePrivate -> mempty
 
 instance ShowJ Interfaces where
-  showJ' tabCount (Interfaces l) =
-    mconcat $ intersperse _nl $ map (showJ' tabCount) l
+  showJ' c tabCount (Interfaces l) =
+    mconcat $ intersperse _nl $ map (showJ' c tabCount) l
 
 instance ShowJ InterfaceInfo where
-  showJ (InterfaceInfo s) = byteString ".implements " <> showJ s
+  showJ c (InterfaceInfo s) = byteString ".implements " <> showJ c s
 
 instance ShowJ Fields where
-  showJ' tabCount (Fields l) =
-    mconcat $ intersperse _nl $ map (showJ' tabCount) l
+  showJ' c tabCount (Fields l) =
+    mconcat $ intersperse _nl $ map (showJ' c tabCount) l
 
 instance ShowJ FieldInfo where
-  showJ' tabCount FieldInfo {..} =
-    _tab tabCount <> byteString ".field" <> showJ accessFlag <> _sp <>
-    showJ nameIndex <>
+  showJ' c tabCount FieldInfo {..} =
+    _tab c tabCount <> byteString ".field" <> showJ c accessFlag <> _sp <>
+    showJ c nameIndex <>
     _sp <>
-    showJ descIndex <>
-    showJlist' _nl (tabCount + 1) attrs
+    showJ c descIndex <>
+    showJlist' c _nl (tabCount + 1) attrs
 
 instance ShowJ Methods where
-  showJ' tabCount (Methods l) =
-    mconcat $ intersperse _nl $ map (showJ' tabCount) l
+  showJ' c tabCount (Methods l) =
+    mconcat $ intersperse _nl $ map (showJ' c tabCount) l
 
 instance ShowJ MethodInfo where
-  showJ' tabCount MethodInfo {..} =
-    _tab tabCount <> byteString ".method" <> showJ accessFlag <> _sp <>
-    showJ nameIndex <>
+  showJ' c tabCount MethodInfo {..} =
+    _tab c tabCount <> byteString ".method" <> showJ c accessFlag <> _sp <>
+    showJ c nameIndex <>
     byteString " : " <>
-    showJ descIndex <>
-    showJlist' _nl (tabCount + 1) attrs
+    showJ c descIndex <>
+    showJlist' c _nl (tabCount + 1) attrs
 
 instance ShowJ Attributes where
-  showJ' tabCount (Attributes l) =
-    mconcat $ intersperse _nl $ map (showJ' tabCount) l
+  showJ' c tabCount (Attributes l) =
+    mconcat $ intersperse _nl $ map (showJ' c tabCount) $ filter shouldShow l
+    where
+      shouldShow :: AttributeInfo -> Bool
+      shouldShow ASynthetic = False
+      shouldShow _          = True
 
 instance ShowJ AttributeInfo where
-  showJ' tabCount attributeInfo =
-    _tab tabCount <>
+  showJ' c tabCount attributeInfo =
     case attributeInfo of
       ACode {..} ->
-        byteString ".code stack " <> showJ stackLimit <> byteString " locals " <>
-        showJ localLimit <>
-        showJlist' _nl (tabCount + 1) code <> -- TODO add exception tables
-        showJlist' (_nl <> _nl) (tabCount + 1) cAttrs
-      AConst _ -> byteString ".const"
+        tab <> byteString ".code stack " <> showJ c stackLimit <>
+        byteString " locals " <>
+        showJ c localLimit <>
+        showJlist' c _nl (tabCount + 1) code <> -- TODO add exception tables
+        showJlist' c (_nl <> _nl) (tabCount + 1) attrs
+      AConst s -> tab <> byteString ".const " <> lazyByteString s
+      ALineNumberTable l -> showJ' c tabCount l
+      AExceptions l -> showJ' c tabCount l
+      ASourceFile s ->
+        tab <> byteString ".sourcefile '" <> lazyByteString s <> charUtf8 '\''
+      AInnerClasses l -> showJ' c tabCount l
+      ASynthetic -> mempty
+      AGeneric (GenericAttribute name _) ->
+        tab <> byteString ".generic " <> lazyByteString name
+    where
+      tab = _tab c tabCount
+
+instance ShowJ InnerClasses where
+  showJ' c tabCount (InnerClasses l) =
+    _tab c tabCount <> byteString ".innerclasses" <> _nl <>
+    mconcat (intersperse _nl $ map (showJ' c $ tabCount + 1) l)
+
+instance ShowJ InnerClass where
+  showJ c InnerClass {..} =
+    lazyByteString innerClass <> _sp <> lazyByteString outerClass <> _sp <>
+    lazyByteString innerName <>
+    showJ c accessFlag
+
+instance ShowJ Exceptions where
+  showJ' c tabCount (Exceptions l) =
+    _tab c tabCount <> byteString ".exceptions" <> _nl <>
+    mconcat (intersperse _nl $ map (showJ' c $ tabCount + 1) l)
+
+instance ShowJ Exception where
+  showJ _ (Exception s) = byteString "throws " <> lazyByteString s
+
+instance ShowJ LineNumberTable where
+  showJ' c tabCount (LineNumberTable l) =
+    _tab c tabCount <> byteString ".linenumbertable" <> _nl <>
+    mconcat (intersperse _nl $ map (showJ' c $ tabCount + 1) l)
+
+instance ShowJ LineNumberInfo where
+  showJ c LineNumberInfo {..} =
+    charUtf8 'L' <> showJ c startPc <> _sp <> showJ c lineNumber
 
 instance ShowJ StackLimit where
-  showJ (StackLimit i) = showJ i
+  showJ c (StackLimit i) = showJ c i
 
 instance ShowJ LocalLimit where
-  showJ (LocalLimit i) = showJ i
+  showJ c (LocalLimit i) = showJ c i
 
 instance ShowJ IRIndex where
-  showJ (IRIndex i) = showJ i
+  showJ c (IRIndex i) = showJ c i
 
 instance ShowJ IRIndexw where
-  showJ (IRIndexw i) = showJ i
+  showJ c (IRIndexw i) = showJ c i
 
 instance ShowJ IntByte where
-  showJ (IntByte i) = showJ i
+  showJ c (IntByte i) = showJ c i
 
 instance ShowJ IntShort where
-  showJ (IntShort i) = showJ i
+  showJ c (IntShort i) = showJ c i
 
 instance ShowJ Count where
-  showJ (Count i) = showJ i
+  showJ c (Count i) = showJ c i
 
 instance ShowJ IRLabel where
-  showJ (IRLabel i) = showJ i
+  showJ c (IRLabel i) = showJ c i
 
 instance ShowJ IRLabelw where
-  showJ (IRLabelw i) = showJ i
+  showJ c (IRLabelw i) = showJ c i
 
 instance ShowJ Word8 where
-  showJ = word8Dec
+  showJ _ = word8Dec
 
 instance ShowJ Word16 where
-  showJ = word16Dec
+  showJ _ = word16Dec
 
 instance ShowJ Word32 where
-  showJ = word32Dec
+  showJ _ = word32Dec
 
 instance ShowJ Word64 where
-  showJ = word64Dec
+  showJ _ = word64Dec
 
 instance ShowJ Int8 where
-  showJ = int8Dec
+  showJ _ = int8Dec
 
 instance ShowJ Int16 where
-  showJ = int16Dec
+  showJ _ = int16Dec
 
 instance ShowJ Int32 where
-  showJ = int32Dec
+  showJ _ = int32Dec
 
 instance ShowJ Int64 where
-  showJ = int64Dec
+  showJ _ = int64Dec
 
 instance ShowJ ArrayType where
-  showJ at =
-    showJ $
+  showJ c at =
+    showJ c $
     case at of
       AtBool   -> TBool
       AtChar   -> TChar
@@ -229,7 +290,7 @@ instance ShowJ ArrayType where
       AtLong   -> TLong
 
 instance ShowJ FieldDescriptor where
-  showJ fd =
+  showJ c fd =
     case fd of
       TByte    -> charUtf8 'B'
       TChar    -> charUtf8 'C'
@@ -237,30 +298,44 @@ instance ShowJ FieldDescriptor where
       TFloat   -> charUtf8 'F'
       TInt     -> charUtf8 'I'
       TLong    -> charUtf8 'J'
-      TRef s   -> charUtf8 'L' <> showJ s <> _sc
+      TRef s   -> charUtf8 'L' <> showJ c s <> _sc
       TShort   -> charUtf8 'S'
       TBool    -> charUtf8 'Z'
-      TArray d -> charUtf8 '[' <> showJ d
+      TArray d -> charUtf8 '[' <> showJ c d
 
 instance ShowJ Instructions where
-  showJ' tabCount (Instructions l) =
-    mconcat $ intersperse _nl $ map (showJ' tabCount) l
+  showJ' c@ShowJConfig {tabSize, showCodeIndex} tabCount (Instructions l) =
+    mconcat $
+    intersperse _nl $
+    if showCodeIndex
+      then zipWith showInstr [0 ..] l
+      else map (showJ' c tabCount) l
+    where
+      showInstr :: Int -> Instruction -> Builder
+      showInstr i inst =
+        charUtf8 'L' <> intDec i <> charUtf8 ':' <>
+        mconcat (replicate (spaceCount i) _sp) <>
+        showJ c inst
+      maxSpaceCount :: Int
+      maxSpaceCount = tabCount * tabSize
+      spaceCount :: Int -> Int
+      spaceCount i = maxSpaceCount - (i `div` 10) - 2
 
 instance ShowJ Instruction where
-  showJ inst =
+  showJ c inst =
     case inst of
       Aaload -> byteString "aaload"
       Aastore -> byteString "aastore"
       AconstNull -> byteString "aconst_null"
-      Aload i -> byteString "aload " <> showJ i
+      Aload i -> byteString "aload " <> showJ c i
       Aload0 -> byteString "aload_0"
       Aload1 -> byteString "aload_1"
       Aload2 -> byteString "aload_2"
       Aload3 -> byteString "aload_3"
-      Anewarray i -> byteString "anewarray " <> showJ i
+      Anewarray i -> byteString "anewarray " <> showJ c i
       Areturn -> byteString "areturn"
       Arraylength -> byteString "arraylength"
-      Astore i -> byteString "astore " <> showJ i
+      Astore i -> byteString "astore " <> showJ c i
       Astore0 -> byteString "astore_0"
       Astore1 -> byteString "astore_1"
       Astore2 -> byteString "astore_2"
@@ -268,11 +343,11 @@ instance ShowJ Instruction where
       Athrow -> byteString "athrow"
       Baload -> byteString "baload"
       Bastore -> byteString "bastore"
-      Bipush i -> byteString "bipush " <> showJ i
+      Bipush i -> byteString "bipush " <> showJ c i
       Breakpoint -> byteString "breakpoint"
       Caload -> byteString "caload"
       Castore -> byteString "castore"
-      Checkcast i -> byteString "checkcast" <> showJ i
+      Checkcast i -> byteString "checkcast" <> showJ c i
       D2f -> byteString "d2f"
       D2i -> byteString "d2i"
       D2l -> byteString "d2l"
@@ -284,7 +359,7 @@ instance ShowJ Instruction where
       Dconst0 -> byteString "dconst_0"
       Dconst1 -> byteString "dconst_1"
       Ddiv -> byteString "ddiv"
-      Dload i -> byteString "dload " <> showJ i
+      Dload i -> byteString "dload " <> showJ c i
       Dload0 -> byteString "dload_0"
       Dload1 -> byteString "dload_1"
       Dload2 -> byteString "dload_2"
@@ -293,7 +368,7 @@ instance ShowJ Instruction where
       Dneg -> byteString "dneg"
       Drem -> byteString "drem"
       Dreturn -> byteString "dreturn"
-      Dstore i -> byteString "dstore " <> showJ i
+      Dstore i -> byteString "dstore " <> showJ c i
       Dstore0 -> byteString "dstore_0"
       Dstore1 -> byteString "dstore_1"
       Dstore2 -> byteString "dstore_2"
@@ -317,7 +392,7 @@ instance ShowJ Instruction where
       Fconst1 -> byteString "fconst_1"
       Fconst2 -> byteString "fconst_2"
       Fdiv -> byteString "fdiv"
-      Fload i -> byteString "fload " <> showJ i
+      Fload i -> byteString "fload " <> showJ c i
       Fload0 -> byteString "fload_0"
       Fload1 -> byteString "fload_1"
       Fload2 -> byteString "fload_2"
@@ -326,16 +401,16 @@ instance ShowJ Instruction where
       Fneg -> byteString "fneg"
       Frem -> byteString "frem"
       Freturn -> byteString "freturn"
-      Fstore i -> byteString "fstore " <> showJ i
+      Fstore i -> byteString "fstore " <> showJ c i
       Fstore0 -> byteString "fstore_0"
       Fstore1 -> byteString "fstore_1"
       Fstore2 -> byteString "fstore_2"
       Fstore3 -> byteString "fstore_3"
       Fsub -> byteString "fsub"
-      Getfield i -> byteString "getfield " <> showJ i
-      Getstatic i -> byteString "getstatic " <> showJ i
-      Goto l -> byteString "goto " <> showJ l
-      GotoW l -> byteString "goto_w " <> showJ l
+      Getfield i -> byteString "getfield " <> showJ c i
+      Getstatic i -> byteString "getstatic " <> showJ c i
+      Goto l -> byteString "goto " <> showJ c l
+      GotoW l -> byteString "goto_w " <> showJ c l
       I2b -> byteString "i2b"
       I2c -> byteString "i2c"
       I2d -> byteString "i2d"
@@ -354,43 +429,43 @@ instance ShowJ Instruction where
       Iconst5 -> byteString "iconst_5"
       IconstM1 -> byteString "iconst_m1"
       Idiv -> byteString "idiv"
-      IfAcmpeq l -> byteString "if_acmpeq " <> showJ l
-      IfAcmpne l -> byteString "if_acmpne " <> showJ l
-      IfIcmpeq l -> byteString "if_icmpeq " <> showJ l
-      IfIcmpge l -> byteString "if_icmpge " <> showJ l
-      IfIcmpgt l -> byteString "if_icmpgt " <> showJ l
-      IfIcmple l -> byteString "if_icmple " <> showJ l
-      IfIcmplt l -> byteString "if_icmplt " <> showJ l
-      IfIcmpne l -> byteString "if_icmpne " <> showJ l
-      Ifeq l -> byteString "ifeq " <> showJ l
-      Ifge l -> byteString "ifge " <> showJ l
-      Ifgt l -> byteString "ifgt " <> showJ l
-      Ifle l -> byteString "ifle " <> showJ l
-      Iflt l -> byteString "iflt " <> showJ l
-      Ifne l -> byteString "ifne " <> showJ l
-      Ifnonnull l -> byteString "ifnonnull " <> showJ l
-      Ifnull l -> byteString "ifnull " <> showJ l
-      Iinc i b -> byteString "iinc " <> showJ i <> _sp <> showJ b
-      Iload i -> byteString "iload " <> showJ i
+      IfAcmpeq l -> byteString "if_acmpeq " <> showJ c l
+      IfAcmpne l -> byteString "if_acmpne " <> showJ c l
+      IfIcmpeq l -> byteString "if_icmpeq " <> showJ c l
+      IfIcmpge l -> byteString "if_icmpge " <> showJ c l
+      IfIcmpgt l -> byteString "if_icmpgt " <> showJ c l
+      IfIcmple l -> byteString "if_icmple " <> showJ c l
+      IfIcmplt l -> byteString "if_icmplt " <> showJ c l
+      IfIcmpne l -> byteString "if_icmpne " <> showJ c l
+      Ifeq l -> byteString "ifeq " <> showJ c l
+      Ifge l -> byteString "ifge " <> showJ c l
+      Ifgt l -> byteString "ifgt " <> showJ c l
+      Ifle l -> byteString "ifle " <> showJ c l
+      Iflt l -> byteString "iflt " <> showJ c l
+      Ifne l -> byteString "ifne " <> showJ c l
+      Ifnonnull l -> byteString "ifnonnull " <> showJ c l
+      Ifnull l -> byteString "ifnull " <> showJ c l
+      Iinc i b -> byteString "iinc " <> showJ c i <> _sp <> showJ c b
+      Iload i -> byteString "iload " <> showJ c i
       Iload0 -> byteString "iload_0"
       Iload1 -> byteString "iload_1"
       Iload2 -> byteString "iload_2"
       Iload3 -> byteString "iload_3"
       Imul -> byteString "imul"
       Ineg -> byteString "ineg"
-      Instanceof i -> byteString "instanceof " <> showJ i
-      Invokedynamic i -> byteString "invokedynamic " <> showJ i
+      Instanceof i -> byteString "instanceof " <> showJ c i
+      Invokedynamic i -> byteString "invokedynamic " <> showJ c i
       Invokeinterface i b ->
-        byteString "invokeinterface " <> showJ i <> _sp <> showJ b
-      Invokespecial i -> byteString "invokespecial " <> showJ i
-      Invokestatic i -> byteString "invokestatic " <> showJ i
-      Invokevirtual i -> byteString "invokevirtual " <> showJ i
+        byteString "invokeinterface " <> showJ c i <> _sp <> showJ c b
+      Invokespecial i -> byteString "invokespecial " <> showJ c i
+      Invokestatic i -> byteString "invokestatic " <> showJ c i
+      Invokevirtual i -> byteString "invokevirtual " <> showJ c i
       Ior -> byteString "ior"
       Irem -> byteString "irem"
       Ireturn -> byteString "ireturn"
       Ishl -> byteString "ishl"
       Ishr -> byteString "ishr"
-      Istore i -> byteString "istore " <> showJ i
+      Istore i -> byteString "istore " <> showJ c i
       Istore0 -> byteString "istore_0"
       Istore1 -> byteString "istore_1"
       Istore2 -> byteString "istore_2"
@@ -398,8 +473,8 @@ instance ShowJ Instruction where
       Isub -> byteString "isub"
       Iushr -> byteString "iushr"
       Ixor -> byteString "ixor"
-      Jsr l -> byteString "jsr " <> showJ l
-      JsrW l -> byteString "jsr_w " <> showJ l
+      Jsr l -> byteString "jsr " <> showJ c l
+      JsrW l -> byteString "jsr_w " <> showJ c l
       L2d -> byteString "l2d"
       L2f -> byteString "l2f"
       L2i -> byteString "l2i"
@@ -410,11 +485,11 @@ instance ShowJ Instruction where
       Lcmp -> byteString "lcmp"
       Lconst0 -> byteString "lconst_0"
       Lconst1 -> byteString "lconst_1"
-      Ldc i -> byteString "ldc " <> showJ i
-      Ldc2W i -> byteString "ldc2_w " <> showJ i
-      LdcW i -> byteString "ldc_w " <> showJ i
+      Ldc i -> byteString "ldc " <> showJ c i
+      Ldc2W i -> byteString "ldc2_w " <> showJ c i
+      LdcW i -> byteString "ldc_w " <> showJ c i
       Ldiv -> byteString "ldiv"
-      Lload i -> byteString "lload " <> showJ i
+      Lload i -> byteString "lload " <> showJ c i
       Lload0 -> byteString "lload_0"
       Lload1 -> byteString "lload_1"
       Lload2 -> byteString "lload_2"
@@ -426,7 +501,7 @@ instance ShowJ Instruction where
       Lreturn -> byteString "lreturn"
       Lshl -> byteString "lshl"
       Lshr -> byteString "lshr"
-      Lstore i -> byteString "lstore " <> showJ i
+      Lstore i -> byteString "lstore " <> showJ c i
       Lstore0 -> byteString "lstore_0"
       Lstore1 -> byteString "lstore_1"
       Lstore2 -> byteString "lstore_2"
@@ -437,17 +512,17 @@ instance ShowJ Instruction where
       Monitorenter -> byteString "monitorenter"
       Monitorexit -> byteString "monitorexit"
       Multianewarray i b ->
-        byteString "multianewarray " <> showJ i <> _sp <> showJ b
-      New i -> byteString "new " <> showJ i
-      Newarray t -> byteString "newarray " <> showJ t
+        byteString "multianewarray " <> showJ c i <> _sp <> showJ c b
+      New i -> byteString "new " <> showJ c i
+      Newarray t -> byteString "newarray " <> showJ c t
       Nop -> byteString "nop"
       Pop -> byteString "pop"
       Pop2 -> byteString "pop2"
-      Putfield i -> byteString "putfield " <> showJ i
-      Putstatic i -> byteString "putstatic " <> showJ i
-      Ret i -> byteString "ret " <> showJ i
+      Putfield i -> byteString "putfield " <> showJ c i
+      Putstatic i -> byteString "putstatic " <> showJ c i
+      Ret i -> byteString "ret " <> showJ c i
       Return -> byteString "return"
       Saload -> byteString "saload"
       Sastore -> byteString "sastore"
-      Sipush i -> byteString "sipush " <> showJ i
+      Sipush i -> byteString "sipush " <> showJ c i
       Swap -> byteString "swap"

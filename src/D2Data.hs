@@ -5,27 +5,7 @@ See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE RecordWildCards       #-}
 
-module D2Data
-  ( NameAndTypeInfo(..)
-  , RefInfo(..)
-  , AttrIndex(..)
-  , AttributeInfoKind(..)
-  , StackLimit(..)
-  , LocalLimit(..)
-  , ClassFile
-  , ConstantPool
-  , ConstantPoolInfo
-  , Interfaces
-  , InterfaceInfo
-  , Fields
-  , FieldInfo
-  , Methods
-  , MethodInfo
-  , Attributes
-  , AttributeInfo(..)
-  , refInfo
-  , module DData
-  ) where
+module D2Data where
 
 import           Base
 import           D1Data  (AttrIndex (..))
@@ -71,23 +51,15 @@ refInfo :: ByteString -> NameAndTypeInfo -> RefInfo
 refInfo classInfo NameAndTypeInfo {..} =
   RefInfo {classInfo = classInfo, nameInfo = nameInfo, typeInfo = typeInfo}
 
-data AttributeInfoKind
-  = ACode'
-  | AConst'
+type AttributeInfo
+   = AttributeInfo' ByteString ByteString ByteString IRIndex IRIndexw IRLabel IRLabelw IntByte IntShort ArrayType Count
 
-newtype StackLimit =
-  StackLimit Word16
-  deriving (Show, Eq)
+type GenericAttribute = GenericAttribute' ByteString
 
-newtype LocalLimit =
-  LocalLimit Word16
-  deriving (Show, Eq)
+type Exceptions = Exceptions' Exception
 
-data AttributeInfo
-  = ACode { stackLimit      :: StackLimit
-          , localLimit      :: LocalLimit
-          , code            :: Instructions
-          , exceptionTables :: ExceptionTables
-          , cAttrs          :: Attributes }
-  | AConst ByteString
-  deriving (Show, Eq)
+type Exception = Exception' ByteString
+
+type InnerClasses = InnerClasses' InnerClass
+
+type InnerClass = InnerClass' ByteString ByteString
