@@ -28,7 +28,6 @@ data ConvError
                           CpCategory
                           Index
                           ConstantPoolInfo
-  | ParseError (ParseErrorBundle ByteString DParseError)
   | Generic String
   deriving (Eq)
 
@@ -98,7 +97,6 @@ instance Show ConvError where
         "Bad constant pool access at index " ++
         show i ++
         ": expected " ++ show tag ++ " but got " ++ show info ++ "\n" ++ show cp
-      ParseError s -> errorBundlePretty s
       Generic s -> "Generic error: " ++ s
 
 type DConv = Either ConvError
@@ -112,7 +110,8 @@ instance ConstantPoolGet c =>
   convert cp attr@(GenericAttribute name s) =
     case dparseAttribute name of
       Just parser ->
-        convert cp =<< either (Left . ParseError) Right (parse parser "" s)
+        convert cp =<<
+        either (Left . Generic . errorBundlePretty) Right (parse parser "" s)
       Nothing -> return $ AGeneric attr
 
 instance ConstantPoolGet c =>

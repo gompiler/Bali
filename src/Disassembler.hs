@@ -5,12 +5,12 @@ module Disassembler
 import           Base
 import           D2Data
 import           DConv           (dconv)
-import           DParse          (DParser, dparse)
+import           DParse          (dparser)
 import           Text.Megaparsec
 
 disassemble :: ByteString -> Either String ClassFile
 disassemble contents =
-  case parse (dparse :: DParser) "" contents of
+  case parse dparser "" contents of
     Left e -> throwError $ errorBundlePretty e
     Right x ->
       case dconv x of
