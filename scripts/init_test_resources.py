@@ -28,6 +28,7 @@ _gen_dir = files_dir('gen')
 
 if p.isdir(_gen_dir):
     shutil.rmtree(_gen_dir)
+    print("Cleaned old gen dir")
 
 
 def gen_dir(*paths):
