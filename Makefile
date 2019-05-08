@@ -26,6 +26,11 @@ bali: build
 cbuild:
 	stack build  --allow-different-user --file-watch $(COMPILE_FLAGS)
 
+# Generate test resources
+.PHONY: gen
+gen:
+	python3 "scripts/init_test_resources.py"
+
 # Run hspec tests
 .PHONY: test
 test:

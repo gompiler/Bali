@@ -10,4 +10,5 @@ ENV PATH ${PATH}:/root/.local/bin
 RUN mkdir -p /repo/
 WORKDIR /repo/
 COPY . /repo/
+CMD ["make", "gen"]
 CMD ["make", "test"]
