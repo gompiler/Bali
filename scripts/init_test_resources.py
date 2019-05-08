@@ -48,6 +48,8 @@ from Krakatau.classfileformat.reader import Reader
 from Krakatau.classfileformat.classdata import ClassData
 from io import StringIO
 
+print("Generating files")
+
 for f in java_files:
     name = f[:-5]
 
