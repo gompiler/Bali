@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module TestBase
   ( unless
   , resourceFile
@@ -6,14 +8,16 @@ module TestBase
   ) where
 
 import           Base
-import           Control.Monad        (unless)
+import           Control.Monad        (filterM, unless)
 import qualified Data.ByteString.Lazy as LB
 import           System.Directory
+import           System.FilePath      (joinPath)
 import           Test.Hspec
 
-resourceFile :: String -> IO (Maybe ByteString)
-resourceFile path = do
+resourceFile :: FilePath -> IO (Maybe ByteString)
+resourceFile resourcePath = do
+  let path = joinPath ["test/resources", resourcePath]
   hasFile <- doesFileExist path
   if not hasFile
-    then return Nothing
+    then Nothing <$ putStrLn ("Could not find path " ++ path)
     else Just <$> LB.readFile path
