@@ -20,7 +20,7 @@ module DParse
   ) where
 
 import           Base
-import           BaseParse
+import           BaseByteParse
 import           Control.Monad            (replicateM)
 import           D1Data
 import           Data.Binary              (encode)
