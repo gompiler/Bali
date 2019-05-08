@@ -1,23 +1,26 @@
+{-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell     #-}
 
 module TestBase
   ( unless
-  , resourceFile
+  , testEntrySpec
+  , TestEntry(..)
   , module Base
   , module Test.Hspec
   ) where
 
 import           Base
-import           Control.Monad        (filterM, unless)
-import qualified Data.ByteString.Lazy as LB
-import           System.Directory
-import           System.FilePath      (joinPath)
+import           Control.Monad (unless)
 import           Test.Hspec
+import           TestFileEmbed
 
-resourceFile :: FilePath -> IO (Maybe ByteString)
-resourceFile resourcePath = do
-  let path = joinPath ["test/resources", resourcePath]
-  hasFile <- doesFileExist path
-  if not hasFile
-    then Nothing <$ putStrLn ("Could not find path " ++ path)
-    else Just <$> LB.readFile path
+_testEntries :: [TestEntry]
+_testEntries = $(testEntries "files")
+
+testEntrySpec :: String -> (TestEntry -> Expectation) -> Spec
+testEntrySpec description verify =
+  describe description $ mapM_ testEntrySpec' _testEntries
+  where
+    testEntrySpec' :: TestEntry -> SpecWith ()
+    testEntrySpec' entry@TestEntry {name} = it name $ verify entry
