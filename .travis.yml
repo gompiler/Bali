@@ -5,7 +5,7 @@ cache:
 services:
   - docker
 before_cache:
-  - mkdir $HOME/.stack
+  - sudo chown -R travis $HOME/.stack
 before_install:
   - docker build -t bali .
   - docker volume create -o device=$HOME/.stack -o o=bind stack
