@@ -8,7 +8,7 @@ module IRParse
   ) where
 
 import           Base
-import           BaseParse
+import           BaseByteParse
 import           IR1Data
 import           IRData
 import           Text.Megaparsec

@@ -25,10 +25,8 @@ dependencies:
 - primitive
 - hspec
 - text
-- neat-interpolation
 - bytestring
 - filepath
-- file-embed
 - binary
 - mtl
 - containers
@@ -58,3 +56,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - Bali
+    - template-haskell

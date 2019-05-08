@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module BaseParse
+module BaseByteParse
   ( parseFailure
   , genericFailure
   , nestedParse

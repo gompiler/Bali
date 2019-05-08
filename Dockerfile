@@ -1,13 +1,13 @@
 FROM debian:stable
 
-RUN set -ex \
-        && apt-get update\
-        && apt-get install -y make curl\
-        && curl -sSL https://get.haskellstack.org/ | sh
-
 ENV PATH ${PATH}:/root/.local/bin
 
-RUN mkdir -p /repo/
-WORKDIR /repo/
-COPY . /repo/
-CMD ["make", "test"]
+RUN set -ex \
+        && apt-get update\
+        && apt-get install -y make openjdk-8-jdk python3 curl\
+        && curl -sSL https://get.haskellstack.org/ | sh
+
+RUN mkdir -p /Bali/
+WORKDIR /Bali/
+COPY . /Bali/
+CMD ["./docker_test.sh"]
