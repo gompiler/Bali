@@ -29,6 +29,7 @@ cbuild:
 # Generate test resources
 .PHONY: gen
 gen:
+	git submodule update --init --recursive
 	python3 "scripts/init_test_resources.py"
 
 # Run hspec tests

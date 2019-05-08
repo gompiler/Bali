@@ -1,4 +1,5 @@
 import os
+import sys
 import os.path as p
 import subprocess
 import shutil
@@ -38,19 +39,38 @@ def gen_dir(*paths):
 javac_dir = gen_dir('javac')
 javap_dir = gen_dir('javap')
 javap_v_dir = gen_dir('javap_v')
+krakatau_dir = gen_dir('krakatau')
+
+sys.path.append(p.abspath(p.join(project_dir, 'Krakatau')))
+
+from Krakatau.assembler.disassembly import Disassembler
+from Krakatau.classfileformat.reader import Reader
+from Krakatau.classfileformat.classdata import ClassData
+from io import StringIO
 
 for f in java_files:
     name = f[:-5]
+
+
+    def j_path(base_dir):
+        return p.abspath(p.join(base_dir, name + ".j"))
+
+
     print("Generating {}".format(f))
     path = p.join(_java_dir, f)
     subprocess.call(['javac', path, '-d', javac_dir])
     javac_path = p.join(javac_dir, name + '.class')
-    with open(p.join(javap_dir, name + ".j"), 'w+') as p_file:
+    with open(j_path(javap_dir), 'w+') as p_file:
         subprocess.call(
             ['javap', '-p', '-c', javac_path],
             stdout=p_file)
-
-    with open(p.join(javap_v_dir, name + ".j"), 'w+') as p_file:
+    with open(j_path(javap_v_dir), 'w+') as p_file:
         subprocess.call(
             ['javap', '-p', '-c', '-v', javac_path],
             stdout=p_file)
+    with open(javac_path, 'rb') as c_file:
+        clsdata = ClassData(Reader(c_file.read()))
+        output = StringIO()
+        Disassembler(clsdata, output.write, roundtrip=False).disassemble()
+        with open(j_path(krakatau_dir), 'w+') as p_file:
+            p_file.write(output.getvalue())
