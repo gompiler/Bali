@@ -5,16 +5,16 @@ all: bali
 
 .PHONY: clean
 clean:
-	stack clean --full
+	stack clean --allow-different-user --full
 	@rm -f bali.tix
 
 .PHONY: build
 build:
-	stack build $(COMPILE_FLAGS)
+	stack --allow-different-user build $(COMPILE_FLAGS)
 
 .PHONY: report
 report:
-	stack hpc report bali.tix
+	stack --allow-different-user hpc report bali.tix
 
 bali: build
 	@rm -f bali
@@ -24,7 +24,7 @@ bali: build
 # Continuous build, builds at every file modification, for development purposes only
 .PHONY: cbuild
 cbuild:
-	stack build  --file-watch $(COMPILE_FLAGS)
+	stack build  --allow-different-user --file-watch $(COMPILE_FLAGS)
 
 # Generate test resources
 .PHONY: gen
@@ -36,12 +36,12 @@ gen:
 .PHONY: test
 test: gen
 	@rm -f bali.tix
-	stack test $(COMPILE_FLAGS)
+	stack test --allow-different-user $(COMPILE_FLAGS)
 
 .PHONY: ctest
 ctest:
 	@rm -f bali.tix
-	stack test --file-watch $(COMPILE_FLAGS)
+	stack test --allow-different-user --file-watch $(COMPILE_FLAGS)
 
 # Refactor code using hlint, hindent and stylish-haskell
 .PHONY: refactor
