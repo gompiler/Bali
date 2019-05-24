@@ -34,7 +34,7 @@ gen:
 
 # Run hspec tests
 .PHONY: test
-test:
+test: gen
 	@rm -f bali.tix
 	stack test --allow-different-user $(COMPILE_FLAGS)
 
