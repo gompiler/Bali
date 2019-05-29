@@ -1,5 +1,10 @@
-{-
+{-|
+Module      : IRData
+Description : Intermediate representation for JVM instruction set operations
+Copyright   : (c) Gompiler Team, 2019
+License     : GPL-3
 Instruction set for jvm operations
+
 See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-6.html#jvms-6.5
 -}
 {-# LANGUAGE DeriveFoldable        #-}
@@ -12,6 +17,7 @@ module IRData where
 
 import           Base
 
+-- | Wrapper to convert one instruction to a list
 newtype Instructions' l =
   Instructions [l]
   deriving (Show, Eq, Foldable, Functor, Traversable)

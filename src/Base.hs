@@ -1,3 +1,10 @@
+{-|
+Module      : Base
+Description : Base helper function module for use in many other modules
+Copyright   : (c) Gompiler Team, 2019
+License     : GPL-3
+Base helper function module for use in many other modules
+-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
@@ -60,5 +67,6 @@ mapS ::
      (Traversable t, Monad m, Monad f) => (a -> f (m b)) -> t a -> f (m (t b))
 mapS f x = sequence <$> mapM f x
 
+-- | Convert a number into a hex string, e.g. 0xFFFFFFFF
 hexString :: (Integral a, Show a) => a -> String
 hexString n = "0x" ++ showHex n ""

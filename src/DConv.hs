@@ -1,3 +1,9 @@
+{-|
+Module      : DConv
+Description : Conversion from D1Data to DConv
+Copyright   : (c) Gompiler Team, 2019
+License     : GPL-3
+-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE LambdaCase            #-}
@@ -208,7 +214,7 @@ cpconv cp =
   initInfo cp & stageM convInfo >>= stageM convNameAndType >>=
   stageM convMethodHandle >>=
   extractInfo
-    -- | Apply a conversion stage on the info
+    -- Apply a conversion stage on the info
     -- Essentially, we use the provided info as a snapshot,
     -- and iterate through the conversion for each info entry
   where
