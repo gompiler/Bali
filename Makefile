@@ -1,4 +1,4 @@
-COMPILE_FLAGS = --pedantic --coverage
+COMPILE_FLAGS = --pedantic --coverage --haddock
 
 .PHONY: all
 all: bali
