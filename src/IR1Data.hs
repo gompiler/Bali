@@ -1,6 +1,8 @@
-{-
-Instruction set for jvm operations
-See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-6.html#jvms-6.5
+{-|
+Module      : IR1Data
+Description : Helper for instruction set for JVM operations
+Copyright   : (c) Gompiler Team, 2019
+License     : GPL-3
 -}
 module IR1Data where
 
@@ -35,6 +37,7 @@ newtype Count =
   Count Word8
   deriving (Show, Eq)
 
+-- | Different array types
 data ArrayType
   = AtBool
   | AtChar
@@ -46,7 +49,9 @@ data ArrayType
   | AtLong
   deriving (Show, Eq)
 
+-- | Instruction list wrapper
 type Instructions = Instructions' Instruction
 
+-- | Instruction and its different components (for binary representation)
 type Instruction
    = Instruction' IRIndex IRIndexw IRLabel IRLabelw IntByte IntShort ArrayType Count

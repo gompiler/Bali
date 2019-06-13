@@ -1,4 +1,9 @@
-{-
+{-|
+Module      : DData
+Description : Data mapping for Java class data
+Copyright   : (c) Gompiler Team, 2019
+License     : GPL-3
+
 Data mapping for Java class data
 See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html
 

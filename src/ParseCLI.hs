@@ -1,3 +1,9 @@
+{-|
+Module      : ParseCLI
+Description : CLI for Bali
+Copyright   : (c) Gompiler Team, 2019
+License     : GPL-3
+-}
 module ParseCLI
   ( main
   ) where

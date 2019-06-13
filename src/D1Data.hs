@@ -1,10 +1,10 @@
-{-
-Data mapping for Java class data
-See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html
+{-|
+Module      : D1Data
+Description : Data mapping for Java class data
+Copyright   : (c) Gompiler Team, 2019
+License     : GPL-3
 
-Note that this represents the first iteration, where we focus on parsing.
-All instances of indices are left as is, and no verification is made
-with regards to the indices.
+This iteration is a direct representation of .class files
 -}
 module D1Data where
 

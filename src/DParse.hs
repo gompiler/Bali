@@ -1,5 +1,8 @@
-{-
-Disassembler Parser, which converts from .class to .j
+{-|
+Module      : DParse
+Description : Disassembler parser, which takes in .class files
+Copyright   : (c) Gompiler Team, 2019
+License     : GPL-3
 
 Note that values are stored using big-endian
 

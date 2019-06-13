@@ -1,3 +1,10 @@
+{-|
+Module      : IRParse
+Description : IR parser, which takes in .j files
+Copyright   : (c) Gompiler Team, 2019
+License     : GPL-3
+-}
+
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances  #-}

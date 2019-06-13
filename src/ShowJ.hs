@@ -1,3 +1,9 @@
+{-|
+Module      : ShowJ
+Description : Prettifier for .j files
+Copyright   : (c) Gompiler Team, 2019
+License     : GPL-3
+-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE NamedFieldPuns       #-}
 {-# LANGUAGE OverloadedStrings    #-}
@@ -54,12 +60,12 @@ byteStringJ :: ShowJ a => ShowJConfig -> a -> ByteString
 byteStringJ config s = toLazyByteString $ showJ' config 0 s
 
 stringJ :: ShowJ a => ShowJConfig -> a -> String
-stringJ config s = L.unpack $ byteStringJ config  s
+stringJ config s = L.unpack $ byteStringJ config s
 
 printJ :: ShowJ a => ShowJConfig -> a -> IO ()
 printJ config s = do
   hFlush stdout
-  L.putStrLn $ byteStringJ config  s
+  L.putStrLn $ byteStringJ config s
 
 -- | Given a list of items, show the prefix and the list if it is not empty
 -- or nothing otherwise
