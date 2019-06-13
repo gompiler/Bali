@@ -31,12 +31,13 @@ dependencies:
 - mtl
 - containers
 - directory
+- optparse-applicative
 
 library:
   source-dirs: src
 
 executables:
-  Bali-exe:
+  bali:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
