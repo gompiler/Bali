@@ -3,6 +3,7 @@ Module      : Base
 Description : Base helper function module for use in many other modules
 Copyright   : (c) Gompiler Team, 2019
 License     : GPL-3
+
 Base helper function module for use in many other modules
 -}
 {-# LANGUAGE FlexibleInstances     #-}

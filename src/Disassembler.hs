@@ -1,3 +1,9 @@
+{-|
+Module      : Disassembler
+Description : Main commands for disassembler
+Copyright   : (c) Gompiler Team, 2019
+License     : GPL-3
+-}
 module Disassembler
   ( disassemble
   ) where
