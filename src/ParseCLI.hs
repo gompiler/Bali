@@ -1,22 +1,28 @@
 module ParseCLI
-  ( Cmd(..)
-  , CmdI(..)
-  , cmdParser
-  , main
+  ( main
   ) where
 
+import qualified Data.ByteString.Lazy as L
+import           Disassembler
 import           Options.Applicative
+import           ShowJ
+import           System.Exit
+import           System.IO
+
+-- | putExit: function to output to stderr and exit with return code 1
+putExit :: String -> IO ()
+putExit err = hPutStrLn stderr err >> exitFailure
 
 main :: IO ()
 main = do
   (CI cmd f) <- customExecParser (prefs showHelpOnEmpty) cmdParser
-  readFile f >>=
+  L.readFile f >>=
     case cmd of
-      _ -> putStrLn
+      Disassembler -> either putExit (printJ showJDefaultConfigs) . disassemble
 
 -- | Cmd: type specifying mode
 data Cmd =
-  Foo
+  Disassembler
 
 -- | CmdI: Cmd + Inp
 data CmdI =
@@ -25,22 +31,18 @@ data CmdI =
 
 file :: Parser FilePath
 file =
-  argument
-    str
-    (metavar "FILEPATH" <>
-     help "Read input (source to be evaluated/optimized) from file at FILEPATH")
+  argument str (metavar "FILEPATH" <> help "Read input from file at FILEPATH")
 
-fooParser :: ParserInfo CmdI
-fooParser =
+dParser :: ParserInfo CmdI
+dParser =
   info
-    (CI Foo <$> file)
-    (fullDesc <> progDesc "foo, placeholder command" <> header "foo")
+    (CI Disassembler <$> file)
+    (fullDesc <> progDesc "Disassembles .class to .j" <> header "Disassembler")
 
 -- Combine all mode parsers into one
 cmdParser :: ParserInfo CmdI
 cmdParser =
   info
-    (hsubparser (commandGroup "MODE FILEPATH" <> command "foo" fooParser) <**>
-     helper)
-    (fullDesc <> progDesc "Compiler for goLite" <>
-     header "glc - a compiler for goLite")
+    (hsubparser (command "disassemble" dParser) <**> helper)
+    (fullDesc <> progDesc "JVM Optimizer" <>
+     header "bali - a JVM bytecode optimizer")
