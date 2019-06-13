@@ -1,6 +1,6 @@
 {-|
 Module      : DParse
-Description : Disassembler Parser, which converts from .class to .j
+Description : Disassembler parser, which takes in .class files
 Copyright   : (c) Gompiler Team, 2019
 License     : GPL-3
 
