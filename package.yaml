@@ -30,6 +30,7 @@ dependencies:
 - binary
 - mtl
 - containers
+- unordered-containers
 - directory
 - optparse-applicative
 
